@@ -634,6 +634,14 @@ lemma rvfun_to_prfun:
   apply (simp add: prfun_inverse)
   by (simp add: Pp)
 
+lemma prfun_to_rvfun:
+  assumes "is_prob p"
+  assumes Pp: "P = prfun_of_rvfun p"
+  shows "rvfun_of_prfun (P) = p"
+  apply (simp add: assms)
+  apply (rule rvfun_inverse)
+  by (simp add: assms(1))
+
 subsection \<open> @{type rvfun} laws \<close>
 lemma Sigma_Un_distrib2:
   shows "Sigma A (\<lambda>s. B s) \<union> Sigma A (\<lambda>s. C s) = Sigma A (\<lambda>s. (B s \<union> C s))"
@@ -2003,6 +2011,68 @@ theorem prfun_seqcomp_right_one_point: "P; x := e  = prfun_of_rvfun (([ x\<^sup>
   apply (rule HOL.arg_cong[where f="prfun_of_rvfun"])
   apply (pred_auto)
   apply (subst infsum_mult_singleton_right)
+*)
+
+theorem prfun_seqcomp_right_add_1:
+  assumes "vwb_lens x"
+  shows "(P; (x := $x + (1::nat))) = (if\<^sub>c $x\<^sup>> > 0 then prfun_of_rvfun (([ x\<^sup>> \<leadsto> ($x\<^sup>> - 1)] \<dagger> @(rvfun_of_prfun P)))\<^sub>e else \<^bold>0)"
+  apply (simp add: pfun_defs expr_defs)
+  apply (subst rvfun_inverse)
+  apply (simp add: dist_defs expr_defs)
+  apply (subst rvfun_inverse)
+  apply (simp add: dist_defs expr_defs)
+  apply (simp add: prfun_in_0_1')
+  apply (rule HOL.arg_cong[where f="prfun_of_rvfun"])
+  apply (pred_auto)
+  apply (subst infsum_mult_subset_right)
+  apply (smt (verit, best) Collect_cong Suc_pred assms(1) diff_Suc_1 infsum_on_singleton singleton_conv2 vwb_lens.axioms(1) vwb_lens.put_eq wb_lens.axioms(1) weak_lens.put_get)
+  apply (subst infsum_mult_subset_right)
+  apply (simp add: ureal_zero)
+  by (smt (verit) assms(1) empty_Collect_eq infsum_empty nat.distinct(1) vwb_lens.axioms(1) wb_lens.axioms(1) weak_lens.put_get)
+(*
+proof -
+  fix a and b
+(*
+  have f1: "(get\<^bsub>x\<^esub> b) > 0 \<longrightarrow> (\<exists>!v\<^sub>0. b = put\<^bsub>x\<^esub> v\<^sub>0 (Suc (get\<^bsub>x\<^esub> v\<^sub>0)))"
+    apply (rule impI)
+    apply (rule_tac a = "put\<^bsub>x\<^esub> b ((get\<^bsub>x\<^esub> b) - Suc (0::\<nat>))" in ex1I)
+    using assms(1) by auto
+*)
+  show "(\<Sum>\<^sub>\<infinity>v\<^sub>0::'a. rvfun_of_prfun P (a, v\<^sub>0) * (if b = put\<^bsub>x\<^esub> v\<^sub>0 (Suc (get\<^bsub>x\<^esub> v\<^sub>0)) then 1::\<real> else (0::\<real>))) =
+       rvfun_of_prfun P (a, put\<^bsub>x\<^esub> b (get\<^bsub>x\<^esub> b - Suc (0::\<nat>)))"
+  proof (cases "(get\<^bsub>x\<^esub> b) > 0")
+    case T: True
+    have f1: "(\<exists>!v\<^sub>0. b = put\<^bsub>x\<^esub> v\<^sub>0 (Suc (get\<^bsub>x\<^esub> v\<^sub>0)))"
+      apply (rule_tac a = "put\<^bsub>x\<^esub> b ((get\<^bsub>x\<^esub> b) - Suc (0::\<nat>))" in ex1I)
+      using T assms(1) apply auto[1]
+      by (simp add: assms(1))
+    have f2: "(\<Sum>\<^sub>\<infinity>v\<^sub>0::'a. rvfun_of_prfun P (a, v\<^sub>0) * (if b = put\<^bsub>x\<^esub> v\<^sub>0 (Suc (get\<^bsub>x\<^esub> v\<^sub>0)) then 1::\<real> else (0::\<real>)))
+      = (\<Sum>\<^sub>\<infinity>v\<^sub>0::'a \<in> {v\<^sub>0. b = put\<^bsub>x\<^esub> v\<^sub>0 (Suc (get\<^bsub>x\<^esub> v\<^sub>0))}. rvfun_of_prfun P (a, v\<^sub>0))"
+      by (rule infsum_mult_subset_right)
+    also have "... = (\<Sum>\<^sub>\<infinity>v\<^sub>0::'a \<in> {put\<^bsub>x\<^esub> b ((get\<^bsub>x\<^esub> b) - Suc (0::\<nat>))}. rvfun_of_prfun P (a, v\<^sub>0))"
+      using f1 
+      by (smt (z3) One_nat_def all_not_in_conv assms(1) diff_Suc_1 is_singletonE is_singletonI' 
+          mem_Collect_eq mwb_lens.put_put singletonD vwb_lens.axioms(1) vwb_lens.axioms(2) wb_lens.axioms(1) weak_lens.put_get)
+    also have "... = rvfun_of_prfun P (a, put\<^bsub>x\<^esub> b (get\<^bsub>x\<^esub> b - Suc (0::\<nat>)))"
+      by (rule infsum_on_singleton)
+    then show ?thesis
+      using calculation by presburger
+  next
+    case False
+    then have f1: "\<not>(\<exists>v\<^sub>0. b = put\<^bsub>x\<^esub> v\<^sub>0 (Suc (get\<^bsub>x\<^esub> v\<^sub>0)))"
+      using assms(1) by auto
+    have f2: "(\<Sum>\<^sub>\<infinity>v\<^sub>0::'a. rvfun_of_prfun P (a, v\<^sub>0) * (if b = put\<^bsub>x\<^esub> v\<^sub>0 (Suc (get\<^bsub>x\<^esub> v\<^sub>0)) then 1::\<real> else (0::\<real>)))
+      = (\<Sum>\<^sub>\<infinity>v\<^sub>0::'a \<in> {v\<^sub>0. b = put\<^bsub>x\<^esub> v\<^sub>0 (Suc (get\<^bsub>x\<^esub> v\<^sub>0))}. rvfun_of_prfun P (a, v\<^sub>0))"
+      by (rule infsum_mult_subset_right)
+    also have "... = (\<Sum>\<^sub>\<infinity>v\<^sub>0::'a \<in> {}. rvfun_of_prfun P (a, v\<^sub>0))"
+      using f1 
+      by (smt (z3) One_nat_def all_not_in_conv assms(1) diff_Suc_1 is_singletonE is_singletonI' 
+          mem_Collect_eq mwb_lens.put_put singletonD vwb_lens.axioms(1) vwb_lens.axioms(2) wb_lens.axioms(1) weak_lens.put_get)
+    also have "... = 0"
+      by (rule infsum_empty)
+    then show ?thesis 
+      sledgehammer
+  qed
 *)
 
 lemma prfun_infsum_over_pair_subset_1:
@@ -6542,5 +6612,20 @@ theorem unique_fixed_point_lfp_gfp_finite_final':
         "while\<^sub>p\<^sup>\<top> b do P od = fp"
   using assms iterate_sup_inf_eq_finite_final unique_fixed_point_lfp_gfp_finite_final(1) apply blast
   using assms iterate_sup_inf_eq_finite_final unique_fixed_point_lfp_gfp_finite_final(2) by blast
+
+subsection \<open> Refinement \<close>
+
+text \<open> Indeed, @{text "II\<^sub>p"} is not a refinement of @{text "II\<^sub>p"} in general. \<close>
+lemma 
+  assumes "vwb_lens x"
+  shows "pskip \<sqsubseteq>\<^sub>a\<^bsub>x\<^esub> pskip"
+  apply (simp add: prefinement_alpha_def pfun_defs)
+  apply (simp add: rvfun_skip_inverse)
+  apply (subst rvfun_inverse)
+  apply (simp add: is_prob_ibracket)
+  apply (rule HOL.arg_cong[where f="prfun_of_rvfun"])
+  apply (pred_auto)
+  apply (simp add: infsum_mult_singleton_left)
+  oops
 
 end

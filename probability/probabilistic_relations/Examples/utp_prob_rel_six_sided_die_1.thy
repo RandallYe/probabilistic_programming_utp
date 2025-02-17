@@ -1,15 +1,6 @@
-section \<open> Throw two six-sided dice \<close>
-text \<open>This example is from Section 15 of the Hehner's paper ``A probability perspective''.
-The invariant of the program for an equal result is 
-@{text "\<lbrakk>u' = v'\<rbrakk>\<^sub>\<I> * \<lbrakk>t' \<ge> t+1\<rbrakk>\<^sub>\<I> * (5/6)^(t'-t-1) * (1/6)"}.
-This program cannot guarantee absolute termination (see Section 2.3 of ``
-Abstraction Refinement and Proof for Probabilistic Systems''), but it is almost-certain 
-termination.
-The probability for non-termination is @{text "\<lbrakk>u' \<noteq> v'\<rbrakk>\<^sub>\<I> * \<lbrakk>t' \<ge> t+1\<rbrakk>\<^sub>\<I> * (5/6)^(t'-t)"}. When 
-@{text "t'"} tends to @{text "\<infinity>"}, then the probability tends to 0.
-\<close>
+section \<open> Knuth and Yao's algorithm to simulate six-sided die using a fair coin \<close>
 
-theory utp_prob_rel_six_sided_die_0
+theory utp_prob_rel_six_sided_die_1
   imports 
     "UTP_prob_relations.utp_prob_rel" 
     "UTP_prob_relations.infsum_power_series"
@@ -19,13 +10,11 @@ begin
 unbundle UTP_Syntax
 
 declare [[show_types]]
-subsection \<open> Knuth and Yao's algorithm to simulate six-sided die using a fair coin \<close>
+subsection \<open> State space and definitions \<close>
 
 text \<open> \<close>
 datatype S = s0 | s1 | s2 | s3 | s4 | s5 | s6 | s7
 datatype D = d0 | d1 | d2 | d3 | d4 | d5 | d6
-
-subsubsection \<open> State space \<close>
 
 alphabet state = time +
   s   :: S
@@ -62,10 +51,26 @@ definition Ht :: "ureal \<Rightarrow> D \<Rightarrow> D \<Rightarrow> D \<Righta
   )\<^sub>e
 "
 
+definition dice_loop_t_add_1 :: "ureal \<Rightarrow> S \<Rightarrow> S \<Rightarrow> S \<Rightarrow> D \<Rightarrow> D \<Rightarrow> D \<Rightarrow> state prhfun" where 
+"dice_loop_t_add_1 p s\<^sub>1 s\<^sub>2 s\<^sub>3 d\<^sub>1 d\<^sub>2 d\<^sub>3 = dice_loop p s\<^sub>1 s\<^sub>2 s\<^sub>3 d\<^sub>1 d\<^sub>2 d\<^sub>3 ; t := t + 1"
+
+text \<open> Invariant for @{text "dice_loop"} \<close>
+definition Ht_t :: "ureal \<Rightarrow> D \<Rightarrow> D \<Rightarrow> D \<Rightarrow> state rvhfun" where 
+"Ht_t p d\<^sub>1 d\<^sub>2 d\<^sub>3 = (
+    \<lbrakk>\<not> s\<^sup>< = s7\<rbrakk>\<^sub>\<I>\<^sub>e * (
+      \<lbrakk>s\<^sup>> = \<guillemotleft>s7\<guillemotright> \<and> d\<^sup>> = \<guillemotleft>d\<^sub>1\<guillemotright> \<and> t\<^sup>> \<ge> t\<^sup>< + 3 \<and> (t\<^sup>> - t\<^sup>< - 1) mod 2 = 0\<rbrakk>\<^sub>\<I>\<^sub>e * 
+        (ureal2real \<guillemotleft>p\<guillemotright>) ^ ((t\<^sup>> - t\<^sup>< - 3)) * ureal2real \<guillemotleft>p\<guillemotright> * (1 - ureal2real \<guillemotleft>p\<guillemotright>) +
+      \<lbrakk>s\<^sup>> = \<guillemotleft>s7\<guillemotright> \<and> d\<^sup>> = \<guillemotleft>d\<^sub>2\<guillemotright> \<and> t\<^sup>> \<ge> t\<^sup>< + 3 \<and> (t\<^sup>> - t\<^sup>< - 1) mod 2 = 0\<rbrakk>\<^sub>\<I>\<^sub>e * 
+        (ureal2real \<guillemotleft>p\<guillemotright>) ^ ((t\<^sup>> - t\<^sup>< - 3)) * (1 - ureal2real \<guillemotleft>p\<guillemotright>) * ureal2real \<guillemotleft>p\<guillemotright> +
+      \<lbrakk>s\<^sup>> = \<guillemotleft>s7\<guillemotright> \<and> d\<^sup>> = \<guillemotleft>d\<^sub>3\<guillemotright> \<and> t\<^sup>> \<ge> t\<^sup>< + 3 \<and> (t\<^sup>> - t\<^sup>< - 1) mod 2 = 0\<rbrakk>\<^sub>\<I>\<^sub>e * 
+        (ureal2real \<guillemotleft>p\<guillemotright>) ^ ((t\<^sup>> - t\<^sup>< - 3)) * (1 - ureal2real \<guillemotleft>p\<guillemotright>) * (1 - ureal2real \<guillemotleft>p\<guillemotright>)
+    ) + \<lbrakk>s\<^sup>< = s7 \<and> s\<^sup>> = s\<^sup>< \<and> d\<^sup>> = d\<^sup>< \<and> t\<^sup>> = t\<^sup>< + 1\<rbrakk>\<^sub>\<I>\<^sub>e 
+  )\<^sub>e
+"
+
 definition dice :: "ureal \<Rightarrow> state prhfun" where 
 "dice p = ((s,d,t) := (s0, d0, 0)) ; 
-  (if\<^sub>p \<guillemotleft>p\<guillemotright> then dice_loop p s1 s2 s3 d1 d2 d3 else dice_loop p s4 s5 s6 d4 d5 d6)"
-
+  (if\<^sub>p \<guillemotleft>p\<guillemotright> then (dice_loop_t_add_1 p s1 s2 s3 d1 d2 d3) else (dice_loop_t_add_1 p s4 s5 s6 d4 d5 d6))"
 
 lemma outcome_simp: "rvfun_of_prfun (outcome s\<^sub>1 d\<^sub>1) = (\<lbrakk>s\<^sup>> = \<guillemotleft>s\<^sub>1\<guillemotright> \<and> d\<^sup>> = \<guillemotleft>d\<^sub>1\<guillemotright> \<and> t\<^sup>> = t\<^sup><\<rbrakk>\<^sub>\<I>\<^sub>e)\<^sub>e"
   apply (simp add: outcome_def prfun_passign_comp)
@@ -425,6 +430,20 @@ proof -
     using loop_body_altdef by force
 qed
 
+lemma Ht_is_prob: 
+  assumes d12_neq: "d\<^sub>1 \<noteq> d\<^sub>2"
+  assumes d23_neq: "d\<^sub>2 \<noteq> d\<^sub>3"
+  assumes d13_neq: "d\<^sub>1 \<noteq> d\<^sub>3"
+  assumes d01_neq: "d\<^sub>1 \<noteq> d0"
+  assumes d02_neq: "d\<^sub>2 \<noteq> d0"
+  assumes d03_neq: "d\<^sub>3 \<noteq> d0"   
+  shows "is_prob (Ht p d\<^sub>1 d\<^sub>2 d\<^sub>3)"
+  apply (simp add: Ht_def dist_defs taut_def)
+  apply (rule allI)+
+  apply (rule conjI)
+  apply (smt (z3) SEXP_def iverson_bracket_def mult_nonneg_nonneg ureal_lower_bound ureal_upper_bound zero_le_power)
+  by (smt (z3) SEXP_def d12_neq d13_neq d23_neq iverson_bracket_def mult_le_one power_le_one ureal_lower_bound ureal_upper_bound zero_less_mult_iff)
+  
 lemma Ht_is_fp: 
   assumes s23_neq: "s\<^sub>2 \<noteq> s\<^sub>3"
   assumes s17_neq: "s\<^sub>1 \<noteq> s7"
@@ -952,6 +971,134 @@ proof -
         qed
     qed
   qed
+
+text \<open> \<close>
+lemma dice_loop_t_simp: 
+  assumes "p < 1"
+  assumes s23_neq: "s\<^sub>2 \<noteq> s\<^sub>3"
+  assumes s17_neq: "s\<^sub>1 \<noteq> s7"
+  assumes d12_neq: "d\<^sub>1 \<noteq> d\<^sub>2"
+  assumes d23_neq: "d\<^sub>2 \<noteq> d\<^sub>3"
+  assumes d13_neq: "d\<^sub>1 \<noteq> d\<^sub>3"
+  assumes d01_neq: "d\<^sub>1 \<noteq> d0"
+  assumes d02_neq: "d\<^sub>2 \<noteq> d0"
+  assumes d03_neq: "d\<^sub>3 \<noteq> d0"
+  shows "dice_loop_t_add_1 p s\<^sub>1 s\<^sub>2 s\<^sub>3 d\<^sub>1 d\<^sub>2 d\<^sub>3 = prfun_of_rvfun (Ht_t p d\<^sub>1 d\<^sub>2 d\<^sub>3)"
+  apply (simp only: dice_loop_t_add_1_def)
+  apply (subst prfun_seqcomp_right_add_1)
+  apply simp
+  apply (simp add: prfun_pcond_altdef)
+  apply (subst prfun_to_rvfun[where p = "Ht p d\<^sub>1 d\<^sub>2 d\<^sub>3" and P = "(dice_loop p s\<^sub>1 s\<^sub>2 s\<^sub>3 d\<^sub>1 d\<^sub>2 d\<^sub>3)"])
+  apply (simp add: Ht_is_prob d01_neq d02_neq d03_neq d12_neq d13_neq d23_neq)
+  apply (simp add: assms(1) d01_neq d02_neq d03_neq d12_neq d13_neq d23_neq dice_loop_simp s17_neq s23_neq)
+  apply (subst rvfun_inverse)
+  apply (simp add: Ht_def)
+  apply (pred_auto)
+  apply (simp only: is_prob_def taut_def)
+  apply (rule allI)+
+  apply (smt (verit) SEXP_def d13_neq d23_neq distrib_left mult.commute mult_cancel_left1 mult_le_one mult_nonneg_nonneg power_le_one ureal_lower_bound ureal_upper_bound zero_le_power)
+  apply (pred_auto)
+  apply (rule HOL.arg_cong2[where f="prfun_of_rvfun"])
+  defer
+  apply simp
+  apply (subst fun_eq_iff)
+  apply (rule allI)+
+  apply (simp add: ureal_zero)
+  apply (rule conjI)
+  defer 
+  apply (simp add: Ht_t_def)
+  apply (pred_auto)
+  apply (rule impI)
+  apply (simp only: Ht_t_def Ht_def)
+  apply (pred_simp)
+  apply (rule conjI, rule impI)+
+  apply (rule conjI)
+  using d12_neq apply blast+
+  apply (rule impI,rule conjI)+
+  using d13_neq apply blast+
+  apply (rule impI,rule conjI)+
+  using d12_neq apply blast+
+  apply (rule impI,rule conjI)+
+  using d23_neq apply blast+
+  apply (rule impI,rule conjI)+
+  apply linarith
+  apply (metis One_nat_def Suc_diff_Suc Suc_eq_plus1 Suc_leI add_Suc_right minus_nat.diff_0 numeral_3_eq_3 ordered_cancel_comm_monoid_diff_class.le_diff_conv2)
+  apply (rule impI,rule conjI)+
+  apply linarith
+  apply (metis One_nat_def Suc_eq_plus1 Suc_leI Suc_pred' add_Suc_right numeral_3_eq_3 ordered_cancel_comm_monoid_diff_class.le_diff_conv2)
+  apply (rule impI,rule conjI)+
+  apply linarith
+  apply (metis One_nat_def Suc_diff_Suc Suc_eq_plus1 Suc_leI add_Suc_right cancel_comm_monoid_add_class.diff_zero numeral_3_eq_3 ordered_cancel_comm_monoid_diff_class.le_diff_conv2)
+  apply (rule impI,rule conjI)+
+  apply (metis One_nat_def diff_is_0_eq mod_0 one_neq_zero)
+  by (smt (verit, ccfv_threshold) One_nat_def diff_Suc_1 diff_Suc_Suc diff_is_0_eq' gr0_conv_Suc mod_less_eq_dividend one_neq_zero)
+(*
+  apply (simp add: pfun_defs)
+  apply (simp add: rvfun_assignment_inverse)
+  apply (simp add: dice_loop_simp assms)
+  apply (subst rvfun_inverse)
+  apply (simp add: Ht_def dist_defs taut_def)
+  apply (auto)
+  apply (smt (z3) SEXP_def iverson_bracket_def mult_nonneg_nonneg ureal_lower_bound ureal_upper_bound zero_le_power)
+  apply (smt (verit) SEXP_def d12_neq d13_neq d23_neq iverson_bracket_def mult.commute mult_eq_0_iff mult_le_one power_le_one ureal_lower_bound ureal_upper_bound)
+  apply (simp add: Ht_def Ht_t_def)
+  apply (pred_auto)
+  apply (rule HOL.arg_cong2[where f="prfun_of_rvfun"])
+  defer
+  apply simp
+  apply (subst fun_eq_iff)
+  apply (rule allI)+
+proof -
+  fix t::"\<nat>" and s::"S" and d::"D" and t\<^sub>v'::"\<nat>" and s\<^sub>v'::"S" and d\<^sub>v'::"D" and  x::"state \<times> state"
+  let ?lhs = "(\<Sum>\<^sub>\<infinity>v\<^sub>0::state.
+          ((if \<not> s\<^sub>v (fst x) = s7 then 1::\<real> else (0::\<real>)) *
+           ((if s\<^sub>v v\<^sub>0 = s7 \<and> d\<^sub>v v\<^sub>0 = d\<^sub>1 \<and> Suc (Suc (t\<^sub>v (fst x))) \<le> t\<^sub>v v\<^sub>0 \<and> (t\<^sub>v v\<^sub>0 - t\<^sub>v (fst x)) mod (2::\<nat>) = (0::\<nat>) then 1::\<real> else (0::\<real>)) *
+            ureal2real p ^ (t\<^sub>v v\<^sub>0 - Suc (Suc (t\<^sub>v (fst x)))) *
+            ureal2real p *
+            ((1::\<real>) - ureal2real p) +
+            (if s\<^sub>v v\<^sub>0 = s7 \<and> d\<^sub>v v\<^sub>0 = d\<^sub>2 \<and> Suc (Suc (t\<^sub>v (fst x))) \<le> t\<^sub>v v\<^sub>0 \<and> (t\<^sub>v v\<^sub>0 - t\<^sub>v (fst x)) mod (2::\<nat>) = (0::\<nat>) then 1::\<real> else (0::\<real>)) *
+            ureal2real p ^ (t\<^sub>v v\<^sub>0 - Suc (Suc (t\<^sub>v (fst x)))) *
+            ((1::\<real>) - ureal2real p) *
+            ureal2real p +
+            (if s\<^sub>v v\<^sub>0 = s7 \<and> d\<^sub>v v\<^sub>0 = d\<^sub>3 \<and> Suc (Suc (t\<^sub>v (fst x))) \<le> t\<^sub>v v\<^sub>0 \<and> (t\<^sub>v v\<^sub>0 - t\<^sub>v (fst x)) mod (2::\<nat>) = (0::\<nat>) then 1::\<real> else (0::\<real>)) *
+            ureal2real p ^ (t\<^sub>v v\<^sub>0 - Suc (Suc (t\<^sub>v (fst x)))) *
+            ((1::\<real>) - ureal2real p) *
+            ((1::\<real>) - ureal2real p)) +
+           (if s\<^sub>v (fst x) = s7 \<and> s\<^sub>v v\<^sub>0 = s\<^sub>v (fst x) \<and> d\<^sub>v v\<^sub>0 = d\<^sub>v (fst x) \<and> t\<^sub>v v\<^sub>0 = t\<^sub>v (fst x) then 1::\<real> else (0::\<real>))) *
+          (if snd x = v\<^sub>0\<lparr>t\<^sub>v := Suc (t\<^sub>v v\<^sub>0)\<rparr> then 1::\<real> else (0::\<real>)))"
+  have "?lhs = (\<Sum>\<^sub>\<infinity>v\<^sub>0::state.
+          ((if \<not> s\<^sub>v (fst x) = s7 \<and> snd x = v\<^sub>0\<lparr>t\<^sub>v := Suc (t\<^sub>v v\<^sub>0)\<rparr> then 1::\<real> else (0::\<real>)) *
+           ((if s\<^sub>v v\<^sub>0 = s7 \<and> d\<^sub>v v\<^sub>0 = d\<^sub>1 \<and> Suc (Suc (t\<^sub>v (fst x))) \<le> t\<^sub>v v\<^sub>0 \<and> (t\<^sub>v v\<^sub>0 - t\<^sub>v (fst x)) mod (2::\<nat>) = (0::\<nat>) then 1::\<real> else (0::\<real>)) *
+            ureal2real p ^ (t\<^sub>v v\<^sub>0 - Suc (Suc (t\<^sub>v (fst x)))) * ureal2real p * ((1::\<real>) - ureal2real p) +
+            (if s\<^sub>v v\<^sub>0 = s7 \<and> d\<^sub>v v\<^sub>0 = d\<^sub>2 \<and> Suc (Suc (t\<^sub>v (fst x))) \<le> t\<^sub>v v\<^sub>0 \<and> (t\<^sub>v v\<^sub>0 - t\<^sub>v (fst x)) mod (2::\<nat>) = (0::\<nat>) then 1::\<real> else (0::\<real>)) *
+            ureal2real p ^ (t\<^sub>v v\<^sub>0 - Suc (Suc (t\<^sub>v (fst x)))) * ((1::\<real>) - ureal2real p) *  ureal2real p +
+            (if s\<^sub>v v\<^sub>0 = s7 \<and> d\<^sub>v v\<^sub>0 = d\<^sub>3 \<and> Suc (Suc (t\<^sub>v (fst x))) \<le> t\<^sub>v v\<^sub>0 \<and> (t\<^sub>v v\<^sub>0 - t\<^sub>v (fst x)) mod (2::\<nat>) = (0::\<nat>) then 1::\<real> else (0::\<real>)) *
+            ureal2real p ^ (t\<^sub>v v\<^sub>0 - Suc (Suc (t\<^sub>v (fst x)))) * ((1::\<real>) - ureal2real p) * ((1::\<real>) - ureal2real p)) +
+           (if s\<^sub>v (fst x) = s7 \<and> s\<^sub>v v\<^sub>0 = s\<^sub>v (fst x) \<and> d\<^sub>v v\<^sub>0 = d\<^sub>v (fst x) \<and> t\<^sub>v v\<^sub>0 = t\<^sub>v (fst x) \<and> snd x = v\<^sub>0\<lparr>t\<^sub>v := Suc (t\<^sub>v v\<^sub>0)\<rparr> then 1::\<real> else (0::\<real>))))
+      "
+    by (smt (verit) distrib_left infsum_cong mult_cancel_left1)
+  have "... = "
+  show "?lhs = (if \<not> s\<^sub>v (fst x) = s7 then 1::\<real> else (0::\<real>)) *
+       ((if s\<^sub>v (snd x) = s7 \<and> d\<^sub>v (snd x) = d\<^sub>1 \<and> t\<^sub>v (fst x) + (3::\<nat>) \<le> t\<^sub>v (snd x) \<and> (t\<^sub>v (snd x) - Suc (t\<^sub>v (fst x))) mod (2::\<nat>) = (0::\<nat>) then 1::\<real>
+         else (0::\<real>)) *
+        ureal2real p ^ (t\<^sub>v (snd x) - (t\<^sub>v (fst x) + (3::\<nat>))) *
+        ureal2real p *
+        ((1::\<real>) - ureal2real p) +
+        (if s\<^sub>v (snd x) = s7 \<and> d\<^sub>v (snd x) = d\<^sub>2 \<and> t\<^sub>v (fst x) + (3::\<nat>) \<le> t\<^sub>v (snd x) \<and> (t\<^sub>v (snd x) - Suc (t\<^sub>v (fst x))) mod (2::\<nat>) = (0::\<nat>) then 1::\<real>
+         else (0::\<real>)) *
+        ureal2real p ^ (t\<^sub>v (snd x) - (t\<^sub>v (fst x) + (3::\<nat>))) *
+        ((1::\<real>) - ureal2real p) *
+        ureal2real p +
+        (if s\<^sub>v (snd x) = s7 \<and> d\<^sub>v (snd x) = d\<^sub>3 \<and> t\<^sub>v (fst x) + (3::\<nat>) \<le> t\<^sub>v (snd x) \<and> (t\<^sub>v (snd x) - Suc (t\<^sub>v (fst x))) mod (2::\<nat>) = (0::\<nat>) then 1::\<real>
+         else (0::\<real>)) *
+        ureal2real p ^ (t\<^sub>v (snd x) - (t\<^sub>v (fst x) + (3::\<nat>))) *
+        ((1::\<real>) - ureal2real p) *
+        ((1::\<real>) - ureal2real p)) +
+       (if s\<^sub>v (fst x) = s7 \<and> s\<^sub>v (snd x) = s\<^sub>v (fst x) \<and> d\<^sub>v (snd x) = d\<^sub>v (fst x) \<and> t\<^sub>v (snd x) = Suc (t\<^sub>v (fst x)) then 1::\<real> else (0::\<real>))"
+    sorry
+*)
+qed
+
 
 text \<open> From the semantics below, we observe that the distributions for @{text "d1"} and @{text "d2"} are the same, but 
 that of @{text "d3"} is different. \<close>

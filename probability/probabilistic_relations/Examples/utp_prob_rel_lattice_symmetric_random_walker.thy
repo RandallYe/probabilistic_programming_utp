@@ -961,6 +961,48 @@ lemma pdiff_7_2_simps:
 
   thm "eventually_mono"
 lemma 
+  assumes "m > 0" "n \<ge> 1"
+  assumes "(p::real) \<ge> 0" "(p::real) \<le> 1"
+  shows "pdiff p m (Suc n) \<le> pdiff p m n"
+  using assms
+  proof (induct p m n rule: pdiff.induct)
+    case (1 p uu)
+    then show ?case by auto
+  next
+    case (2 p v)
+    then show ?case using not_one_le_zero by blast
+  next
+    case (3 p v)
+    then show ?case by (simp add: pdiff_leq_1)
+  next
+    case (4 p)
+    then show ?case by (simp add: mult_left_le pdiff_leq_1)
+  next
+    case (5 p v)
+    then show ?case using pdiff.simps(5) pdiff_leq_1 by presburger
+  next
+    case (6 p va)
+    then show ?case apply (subst pdiff.simps(6))
+      by (simp add: ordered_comm_semiring_class.comm_mult_left_mono)
+  next
+    case ("7_1" p va vb)
+    then show ?case apply (subst pdiff.simps(7))
+      apply (auto)
+      apply (smt (verit, best) mult_left_mono)
+      apply (smt (verit, best) ordered_comm_semiring_class.comm_mult_left_mono)
+      apply (simp add: ordered_comm_semiring_class.comm_mult_left_mono pdiff_1)
+      using mult_left_mono by blast
+  next
+    case ("7_2" p v va)
+    then show ?case apply (subst pdiff.simps(7))
+    apply (auto)
+    apply (smt (verit, best) mult_left_mono)
+    apply (smt (verit, best) ordered_comm_semiring_class.comm_mult_left_mono)
+    apply (simp add: ordered_comm_semiring_class.comm_mult_left_mono pdiff_1)
+    using mult_left_mono by blast
+  qed
+
+lemma 
   assumes "m > 0" 
   assumes "(p::real) \<ge> 0" "(p::real) \<le> 1"
   shows "(\<lambda>n::\<nat>. pdiff p m (Suc n)) \<longlonglongrightarrow> (0::\<real>)"
@@ -1156,5 +1198,7 @@ od
 )
 
 *)
+
+thm "arg_cong"
 
 end

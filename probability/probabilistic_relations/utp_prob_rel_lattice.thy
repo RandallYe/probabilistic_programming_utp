@@ -439,4 +439,16 @@ definition ptwhile :: "('a time_scheme \<times> 'a time_scheme) pred \<Rightarro
 abbreviation iteratet ("iterate\<^sub>t") where "iteratet n b P X \<equiv> iterate n b (Pt P) X"
 term "iterate\<^sub>t 0 b P \<^bold>0 = \<^bold>0"
 
+subsection \<open> Refinement \<close>
+term "S = (P ; (prfun_of_rvfun (\<lbrakk> x\<^sup>> = x\<^sup>< \<rbrakk>\<^sub>\<I>\<^sub>e)))"
+definition prefinement_alpha::"('s\<^sub>1, 's\<^sub>1) prfun \<Rightarrow> ('v \<Longrightarrow> 's\<^sub>1) \<Rightarrow> ('s\<^sub>1, 's\<^sub>1) prfun \<Rightarrow> bool" where
+"prefinement_alpha S x P = (S = (P ; (prfun_of_rvfun (\<lbrakk> $x\<^sup>> = $x\<^sup>< \<rbrakk>\<^sub>\<I>\<^sub>e))))"
+
+consts 
+  crefinement_alpha :: "'a \<Rightarrow> 'b \<Rightarrow> 'a \<Rightarrow> bool" ("_ \<sqsubseteq>\<^sub>a\<^bsub>_\<^esub> _" [55, 0, 56] 56)
+
+adhoc_overloading crefinement_alpha prefinement_alpha
+
+term "pskip \<sqsubseteq>\<^sub>a\<^bsub>x\<^esub> pskip"
+
 end
