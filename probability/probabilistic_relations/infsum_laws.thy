@@ -675,4 +675,156 @@ proof -
     using f1 nless_le by blast
 qed
 
+subsection \<open> @{text "infsum"} over additions \<close>
+lemma has_sum_add_3:
+  fixes f g h :: "'a \<Rightarrow> 'b::{topological_comm_monoid_add}"
+  assumes \<open>(f has_sum a) A\<close>
+  assumes \<open>(g has_sum b) A\<close>
+  assumes \<open>(h has_sum c) A\<close>
+  shows \<open>((\<lambda>x. f x + g x + h x) has_sum (a + b + c)) A\<close>
+proof -
+  from assms have lim_f: \<open>(sum f \<longlongrightarrow> a)  (finite_subsets_at_top A)\<close>
+    and lim_g: \<open>(sum g \<longlongrightarrow> b)  (finite_subsets_at_top A)\<close>
+    and lim_h: \<open>(sum h \<longlongrightarrow> c)  (finite_subsets_at_top A)\<close>
+    by (simp_all add: has_sum_def)
+  then have lim: \<open>(sum (\<lambda>x. f x + g x + h x) \<longlongrightarrow> a + b + c) (finite_subsets_at_top A)\<close>
+    unfolding sum.distrib apply (subst tendsto_add)
+    using tendsto_add apply blast
+    by simp+
+  then show ?thesis
+    by (simp_all add: has_sum_def)
+qed
+
+lemma has_sum_add_4:
+  fixes f g h i :: "'a \<Rightarrow> 'b::{topological_comm_monoid_add}"
+  assumes \<open>(f has_sum a) A\<close>
+  assumes \<open>(g has_sum b) A\<close>
+  assumes \<open>(h has_sum c) A\<close>
+  assumes \<open>(i has_sum d) A\<close>
+  shows \<open>((\<lambda>x. f x + g x + h x + i x) has_sum (a + b + c + d)) A\<close>
+  apply (rule has_sum_add_3)
+  apply (rule has_sum_add)
+  by (simp_all add: assms)
+
+lemma has_sum_add_5:
+  fixes f g h i j :: "'a \<Rightarrow> 'b::{topological_comm_monoid_add}"
+  assumes \<open>(f has_sum a) A\<close>
+  assumes \<open>(g has_sum b) A\<close>
+  assumes \<open>(h has_sum c) A\<close>
+  assumes \<open>(i has_sum d) A\<close>
+  assumes \<open>(j has_sum e) A\<close>
+  shows \<open>((\<lambda>x. f x + g x + h x + i x + j x) has_sum (a + b + c + d + e)) A\<close>
+  apply (rule has_sum_add_3)+
+  by (simp_all add: assms)
+
+lemma has_sum_add_6:
+  fixes f g h i j k:: "'a \<Rightarrow> 'b::{topological_comm_monoid_add}"
+  assumes \<open>(f has_sum a) A\<close>
+  assumes \<open>(g has_sum b) A\<close>
+  assumes \<open>(h has_sum c) A\<close>
+  assumes \<open>(i has_sum d) A\<close>
+  assumes \<open>(j has_sum e) A\<close>
+  assumes \<open>(k has_sum v) A\<close>
+  shows \<open>((\<lambda>x. f x + g x + h x + i x + j x + k x) has_sum (a + b + c + d + e + v)) A\<close>
+  apply (rule has_sum_add_3)+
+  apply (rule has_sum_add)
+  by (simp_all add: assms)
+
+lemma summable_on_add_3:
+  fixes f g h :: "'a \<Rightarrow> 'b::{topological_comm_monoid_add}"
+  assumes \<open>f summable_on A\<close>
+  assumes \<open>g summable_on A\<close>
+  assumes \<open>h summable_on A\<close>
+  shows \<open>(\<lambda>x. f x + g x + h x) summable_on A\<close>
+  by (simp add: assms summable_on_add)
+
+lemma summable_on_add_4:
+  fixes f g h i :: "'a \<Rightarrow> 'b::{topological_comm_monoid_add}"
+  assumes \<open>f summable_on A\<close>
+  assumes \<open>g summable_on A\<close>
+  assumes \<open>h summable_on A\<close>
+  assumes \<open>i summable_on A\<close>
+  shows \<open>(\<lambda>x. f x + g x + h x + i x) summable_on A\<close>
+  by (simp add: assms summable_on_add)
+
+lemma summable_on_add_5:
+  fixes f g h i j :: "'a \<Rightarrow> 'b::{topological_comm_monoid_add}"
+  assumes \<open>f summable_on A\<close>
+  assumes \<open>g summable_on A\<close>
+  assumes \<open>h summable_on A\<close>
+  assumes \<open>i summable_on A\<close>
+  assumes \<open>j summable_on A\<close>
+  shows \<open>(\<lambda>x. f x + g x + h x + i x + j x) summable_on A\<close>
+  by (simp add: assms summable_on_add)
+
+lemma summable_on_add_6:
+  fixes f g h i j k :: "'a \<Rightarrow> 'b::{topological_comm_monoid_add}"
+  assumes \<open>f summable_on A\<close>
+  assumes \<open>g summable_on A\<close>
+  assumes \<open>h summable_on A\<close>
+  assumes \<open>i summable_on A\<close>
+  assumes \<open>j summable_on A\<close>
+  assumes \<open>k summable_on A\<close>
+  shows \<open>(\<lambda>x. f x + g x + h x + i x + j x + k x) summable_on A\<close>
+  by (simp add: assms summable_on_add)
+
+lemma infsum_add_3:
+  fixes f g h :: "'a \<Rightarrow> 'b::{topological_comm_monoid_add, t2_space}"
+  assumes \<open>f summable_on A\<close>
+  assumes \<open>g summable_on A\<close>
+  assumes \<open>h summable_on A\<close>
+  shows \<open>infsum (\<lambda>x. f x + g x + h x) A = infsum f A + infsum g A + infsum h A\<close> (is "infsum ?f ?A = ?R")
+proof -
+  have \<open>(?f has_sum ?R) A\<close>
+    by (simp add: assms has_sum_add_3)
+  then show ?thesis
+    using infsumI by blast
+qed
+
+lemma infsum_add_4:
+  fixes f g h i :: "'a \<Rightarrow> 'b::{topological_comm_monoid_add, t2_space}"
+  assumes \<open>f summable_on A\<close>
+  assumes \<open>g summable_on A\<close>
+  assumes \<open>h summable_on A\<close>
+  assumes \<open>i summable_on A\<close>
+  shows \<open>infsum (\<lambda>x. f x + g x + h x + i x) A = infsum f A + infsum g A + infsum h A + infsum i A\<close> (is "infsum ?f ?A = ?R")
+proof -
+  have \<open>(?f has_sum ?R) A\<close>
+    by (simp add: assms has_sum_add_4)
+  then show ?thesis
+    using infsumI by blast
+qed
+
+lemma infsum_add_5:
+  fixes f g h i :: "'a \<Rightarrow> 'b::{topological_comm_monoid_add, t2_space}"
+  assumes \<open>f summable_on A\<close>
+  assumes \<open>g summable_on A\<close>
+  assumes \<open>h summable_on A\<close>
+  assumes \<open>i summable_on A\<close>
+  assumes \<open>j summable_on A\<close>
+  shows \<open>infsum (\<lambda>x. f x + g x + h x + i x + j x) A = infsum f A + infsum g A + infsum h A + infsum i A + infsum j A\<close> (is "infsum ?f ?A = ?R")
+proof -
+  have \<open>(?f has_sum ?R) A\<close>
+    by (simp add: assms has_sum_add_5)
+  then show ?thesis
+    using infsumI by blast
+qed
+
+lemma infsum_add_6:
+  fixes f g h i j k:: "'a \<Rightarrow> 'b::{topological_comm_monoid_add, t2_space}"
+  assumes \<open>f summable_on A\<close>
+  assumes \<open>g summable_on A\<close>
+  assumes \<open>h summable_on A\<close>
+  assumes \<open>i summable_on A\<close>
+  assumes \<open>j summable_on A\<close>
+  assumes \<open>k summable_on A\<close>
+  shows \<open>infsum (\<lambda>x. f x + g x + h x + i x + j x + k x) A 
+      = infsum f A + infsum g A + infsum h A + infsum i A + infsum j A + infsum k A\<close> (is "infsum ?f ?A = ?R")
+proof -
+  have \<open>(?f has_sum ?R) A\<close>
+    by (simp add: assms has_sum_add_6)
+  then show ?thesis
+    using infsumI by blast
+qed
+
 end

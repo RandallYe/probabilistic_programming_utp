@@ -45,6 +45,11 @@ lemma ureal2real_mono:
   by (metis assms atLeastAtMost_iff dual_order.eq_iff ereal_less_eq(1) ereal_times(2) 
       less_eq_ureal.rep_eq real_of_ereal_positive_mono ureal2ereal)
 
+lemma ureal2real_mono':
+  assumes "ureal2real a < ureal2real b"
+  shows "a < b"
+  by (meson assms linorder_not_less ureal2real_mono)
+
 lemma ureal2real_mono_strict:
   assumes "a < b"
   shows "ureal2real a < ureal2real b"
@@ -2384,6 +2389,7 @@ proof -
     by simp
 qed
 
+(*
 find_theorems "(?a + ?b) * ?c"
 theorem prfun_pcond_assign_dist:
   assumes "is_final_sub_dist (rvfun_of_prfun P)"
@@ -2406,6 +2412,7 @@ theorem prfun_pcond_assign_dist:
   apply (simp add: distrib_right)
   apply (subst infsum_add)
   oops
+*)
 
 subsubsection \<open> Normalisation \<close>
 theorem rvfun_uniform_dist_empty_zero:  "(x \<^bold>\<U> {}) = rvfun_of_prfun \<^bold>0"

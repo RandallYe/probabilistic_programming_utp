@@ -1,13 +1,4 @@
-section \<open> Throw two six-sided dice \<close>
-text \<open>This example is from Section 15 of the Hehner's paper ``A probability perspective''.
-The invariant of the program for an equal result is 
-@{text "\<lbrakk>u' = v'\<rbrakk>\<^sub>\<I> * \<lbrakk>t' \<ge> t+1\<rbrakk>\<^sub>\<I> * (5/6)^(t'-t-1) * (1/6)"}.
-This program cannot guarantee absolute termination (see Section 2.3 of ``
-Abstraction Refinement and Proof for Probabilistic Systems''), but it is almost-certain 
-termination.
-The probability for non-termination is @{text "\<lbrakk>u' \<noteq> v'\<rbrakk>\<^sub>\<I> * \<lbrakk>t' \<ge> t+1\<rbrakk>\<^sub>\<I> * (5/6)^(t'-t)"}. When 
-@{text "t'"} tends to @{text "\<infinity>"}, then the probability tends to 0.
-\<close>
+section \<open> A variant of Knuth and Yao's algorithm to simulate six-sided die using a fair coin: simulate three-sided die \<close>
 
 theory utp_prob_rel_six_sided_die
   imports 
@@ -19,13 +10,11 @@ begin
 unbundle UTP_Syntax
 
 declare [[show_types]]
-subsection \<open> Knuth and Yao's algorithm to simulate six-sided die using a fair coin \<close>
+subsection \<open> State space and definitions \<close>
 
 text \<open> \<close>
 datatype S = s1 | s2 | s3 | s4
 datatype D = o0 | o1 | o2 | o3
-
-subsubsection \<open> State space \<close>
 
 alphabet state = time +
   s   :: S
