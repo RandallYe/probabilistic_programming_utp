@@ -373,6 +373,15 @@ lemma ureal2real_power_dist: "ureal2real (u ^ n) = (ureal2real u) ^ n"
 lemma rvfun2ureal: "rvfun_of_prfun (\<guillemotleft>p\<guillemotright>)\<^sub>e = (ureal2real \<guillemotleft>p\<guillemotright>)\<^sub>e"
   by (simp add: rvfun_of_prfun_def)
 
+lemma ureal_mono_strict_less_1:
+  assumes "m > 0" "m < n"
+  shows "ereal2ureal ((m::ereal) / (n::ereal)) < (1::ureal)"
+  apply (subst ureal2real_mono')
+  apply (simp add: ureal_defs)
+  apply (simp add: real2uereal_inverse' ureal_one_1)
+  apply (smt (verit, del_insts) abs_ereal_ge0 assms(1) assms(2) ereal_divide_eq_0_iff ereal_le_divide_pos linorder_not_le max_def min_def mult.right_neutral one_ereal_def order_less_le order_less_trans real2uereal_inverse real_of_ereal.elims real_of_ereal_le_1)
+  by simp
+
 (*
 lemma real2uereal_inverse:
   assumes "n \<ge> 0" "d \<ge> 0" "n \<le> d"
@@ -2751,6 +2760,19 @@ proof -
         (\<Sum>v::'a\<in>A. rvfun_of_prfun P (put\<^bsub>x\<^esub> a v, b)) / real (card A)"
     using calculation fl frl by presburger
 qed
+
+theorem rvfun_uniform_dist_free_altdef:
+  assumes "finite (A::'a set)"
+  assumes "vwb_lens x"
+  assumes "A \<noteq> {}"
+  shows "(x \<^bold>\<U>\<^sub>f A) = (\<lbrakk>\<Squnion> v \<in> \<guillemotleft>A\<guillemotright>. $x\<^sup>> = \<guillemotleft>v\<guillemotright>\<rbrakk>\<^sub>\<I>\<^sub>e / card \<guillemotleft>A\<guillemotright>)\<^sub>e"
+  apply (simp add: dist_defs)
+  apply (expr_auto)
+  apply (pred_auto)
+  apply (subst infsum_constant_finite_states)
+  apply (smt (verit, best) Collect_mem_eq Collect_mono_iff assms(1) assms(2) mem_Collect_eq 
+      mwb_lens_weak rev_finite_subset vwb_lens.axioms(2) weak_lens.put_get)
+  using assms(2) by auto
 
 subsubsection \<open> Parallel composition \<close>
 (*

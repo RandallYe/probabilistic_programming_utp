@@ -440,9 +440,10 @@ abbreviation iteratet ("iterate\<^sub>t") where "iteratet n b P X \<equiv> itera
 term "iterate\<^sub>t 0 b P \<^bold>0 = \<^bold>0"
 
 subsection \<open> Refinement \<close>
-term "S = (P ; (prfun_of_rvfun (\<lbrakk> x\<^sup>> = x\<^sup>< \<rbrakk>\<^sub>\<I>\<^sub>e)))"
+text \<open> This basically means only x needs to follow the distribution of P. Other variables are not constrained. \<close>
 definition prefinement_alpha::"('s\<^sub>1, 's\<^sub>1) prfun \<Rightarrow> ('v \<Longrightarrow> 's\<^sub>1) \<Rightarrow> ('s\<^sub>1, 's\<^sub>1) prfun \<Rightarrow> bool" where
 "prefinement_alpha S x P = (S = (P ; (prfun_of_rvfun (\<lbrakk> $x\<^sup>> = $x\<^sup>< \<rbrakk>\<^sub>\<I>\<^sub>e))))"
+(* "prefinement_alpha S x P = (S = (P ; (prfun_of_rvfun (\<lbrakk> x := $x \<rbrakk>\<^sub>\<I>\<^sub>e))))" *)
 
 consts 
   crefinement_alpha :: "'a \<Rightarrow> 'b \<Rightarrow> 'a \<Rightarrow> bool" ("_ \<sqsubseteq>\<^sub>a\<^bsub>_\<^esub> _" [55, 0, 56] 56)

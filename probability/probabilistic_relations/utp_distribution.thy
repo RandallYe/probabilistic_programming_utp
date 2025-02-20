@@ -66,11 +66,18 @@ definition dist_norm_alpha::"('v \<Longrightarrow> 's\<^sub>2) \<Rightarrow> (re
 thm "dist_norm_alpha_def"
 expr_constructor dist_norm_alpha dist_norm
 
+text \<open> This programs reutrn a uniform distribution over @{term "A"} for @{term "x"}, while other variables 
+stay unchanged. \<close>
 definition uniform_dist:: "('b \<Longrightarrow> 's) \<Rightarrow> \<bbbP> 'b \<Rightarrow> (real, 's \<times> 's) expr" (infix "\<^bold>\<U>" 60) where
 [dist_defs]: "uniform_dist x A = \<^bold>N\<^sub>\<alpha> x (\<lbrakk>\<Squnion> v \<in> \<guillemotleft>A\<guillemotright>. x := \<guillemotleft>v\<guillemotright>\<rbrakk>\<^sub>\<I>\<^sub>e)"
 
-lemma "(\<Squnion> v \<in> {}. x := \<guillemotleft>v\<guillemotright>) = false"
+lemma uniform_dist_empty: "(\<Squnion> v \<in> {}. x := \<guillemotleft>v\<guillemotright>) = false"
   by (pred_auto)
+
+text \<open> This programs reutrn a uniform distribution over @{term "A"} for @{term "x"}, while other variables 
+left unconstrained. \<close>
+definition uniform_dist_free :: "('b \<Longrightarrow> 's) \<Rightarrow> \<bbbP> 'b \<Rightarrow> (real, 's \<times> 's) expr" (infix "\<^bold>\<U>\<^sub>f" 60) where
+[dist_defs]: "uniform_dist_free x A = \<^bold>N\<^sub>\<alpha> x (\<lbrakk>\<Squnion> v \<in> \<guillemotleft>A\<guillemotright>. $x\<^sup>> = \<guillemotleft>v\<guillemotright>\<rbrakk>\<^sub>\<I>\<^sub>e)"
 
 subsection \<open> Laws \<close>
 lemma is_prob_ibracket: "is_prob (\<lbrakk>p\<rbrakk>\<^sub>\<I>\<^sub>e)"
