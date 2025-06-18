@@ -5,6 +5,8 @@ theory utp_prob_rel_lattice_symmetric_random_walker
     "UTP_prob_relations.utp_prob_rel_lattice_laws" 
     "HOL-Analysis.Infinite_Set_Sum"
     "HOL.Binomial"
+    "Catalan_Numbers.Catalan_Numbers"
+    "HOL.Real" (* Explicitly import for real exponents *)
 begin 
 
 unbundle UTP_Syntax
@@ -70,6 +72,31 @@ proof (induct p m n rule: mu_lp.induct)
   thus ?case by (metis (no_types, opaque_lifting) add_0 less_Suc_eq mu_lp.simps(3) mu_lp.simps(4) mult_zero_right not_less_eq old.nat.exhaust)
 qed auto
 
+lemma mu_lp_zero_not_odd_or_even:
+  assumes "m > 0"
+  assumes "n > 0"
+  assumes "(m+n) mod 2 \<noteq> 0"
+  shows "(\<mu>\<^sub>l\<^sub>p p m n) = 0"
+  using assms 
+proof (induct p m n rule: mu_lp.induct)
+  case (1 p)
+  then show ?case by fastforce
+next
+  case (2 p n)
+  then show ?case by blast
+next
+  case (3 p m)
+  then show ?case by blast
+next
+  case (4 p m n)
+  then show ?case
+    by (smt (verit, del_insts) Suc_less_eq add.commute add_0 add_Suc_right add_self_mod_2 
+        bot_nat_0.not_eq_extremum less_Suc_eq less_Suc_eq_0_disj less_iff_Suc_add less_nat_zero_code 
+        mod2_Suc_Suc mu_lp.simps(2) mu_lp.simps(4) mu_lp_zero' mult.commute mult_eq_0_iff 
+        mult_zero_left not_less_eq not_less_iff_gr_or_eq numeral_1_eq_Suc_0 order_less_trans 
+        zero_less_Suc)
+qed
+
 lemma mu_lp_leq_1:
   shows "p \<ge> 0 \<Longrightarrow> p \<le> 1 \<Longrightarrow> (\<mu>\<^sub>l\<^sub>p p m n) \<le> 1"
 proof (induct p m n rule: mu_lp.induct)
@@ -100,7 +127,418 @@ lemma mu_lp_p_m_plus_1:
   shows "(\<mu>\<^sub>l\<^sub>p p m m) * p = \<mu>\<^sub>l\<^sub>p p (m+1) (m+1)"
   using mu_lp_p_m by fastforce
 
-subsubsection \<open> Programs \<close>
+subsubsection \<open> Mathematical theory \<close>
+text \<open> This is the distribution function or constant facts in probability generation functions 
+  @{text "\<Sum>n \<in> {0..}. \<phi> n * z ^ n "}
+\<close>
+
+definition phi :: "real \<Rightarrow> nat \<Rightarrow> real" where
+"phi p m = (if even m then 0 else 
+  (let m' = ((m-1) div 2) in (real (catalan m')) * (p ^ (m' + 1)) * ((1 - p) ^ m'))
+)"
+
+(* "phi p m = (if even m then (catalan (m div 2) * (p ^ (m div 2 + 1)) * (1 - p) ^ (m div 2)) else 0)" *)
+
+lemma phi_odd_calatan:
+  assumes "p \<ge> 0" "p \<le> 1"
+  shows "phi p (2*m + 1) = (real (catalan m)) * (p ^ (m+1)) * ((1-p) ^ m)"
+  by (simp add: phi_def)
+
+lemma phi_even_0: 
+  assumes "even m"
+  shows "phi p m = 0"
+  by (simp add: assms phi_def)
+
+lemma phi_nonneg:
+  assumes "p \<ge> 0" "p \<le> 1"   
+  shows "phi p m \<ge> 0"
+  by (smt (verit) assms(1) assms(2) bot_nat_0.not_eq_extremum mult_nonneg_nonneg of_nat_0 of_nat_0_less_iff phi_def zero_le_power)
+
+lemma phi_p_1: 
+  shows "phi p 1 = p"
+  by (simp add: phi_def)
+
+(*
+fun sun_rec :: "real \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> real" where
+"sun_rec p 0 n = 1" |
+"sun_rec p (Suc m) 0 = 1" |
+"sun_rec p (Suc m) (Suc n) = (\<Sum>i\<^sub>1 \<in> {0..(n)}. (phi p ((n+1) - i\<^sub>1)) * (sun_rec p m i\<^sub>1))"
+
+value "sun_rec (1/2) 1 2"
+*)
+
+fun nu_lp :: "real \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> real" ("\<nu>\<^sub>l\<^sub>p") where 
+"\<nu>\<^sub>l\<^sub>p p 0 0 = 1" |
+"\<nu>\<^sub>l\<^sub>p p 0 (Suc n) = 0" |
+"\<nu>\<^sub>l\<^sub>p p (Suc m) 0 = 0" |
+"\<nu>\<^sub>l\<^sub>p p (Suc m) (Suc n) = (\<Sum>i\<^sub>1 \<in> {0..(n)}. (phi p (Suc n - i\<^sub>1)) * (\<nu>\<^sub>l\<^sub>p p m i\<^sub>1))"
+
+find_theorems name: "nu_lp"
+
+lemma nu_lp_m_zero: "\<forall>n. n \<noteq> 0 \<longrightarrow> \<nu>\<^sub>l\<^sub>p p (0::\<nat>) n = 0 \<and> n = 0 \<longrightarrow> \<nu>\<^sub>l\<^sub>p p (0::\<nat>) n = 1"
+  using nu_lp.elims by blast
+
+lemma nu_lp_0_n_neq_0:
+  assumes "n \<noteq> 0"
+  shows "\<nu>\<^sub>l\<^sub>p p (0::\<nat>) n = 0"
+  using assms not0_implies_Suc nu_lp.simps(2) by blast
+
+lemma nu_lp_1_n_eq_0:
+  shows "\<nu>\<^sub>l\<^sub>p p (0::\<nat>) 0 = 1"
+  by simp
+
+lemma nu_lp_nonneg:
+  assumes "p \<ge> 0" "p \<le> 1"
+  shows "\<nu>\<^sub>l\<^sub>p p m n \<ge> 0"
+  using assms
+proof (induct p m n rule: nu_lp.induct)
+  case (1 p)
+  then show ?case by fastforce
+next
+  case (2 p n)
+  then show ?case by simp
+next
+  case (3 p m)
+  then show ?case by simp
+next
+  case (4 p m n)
+  then show ?case
+    apply simp
+    apply (rule sum_nonneg)
+    apply (rule mult_nonneg_nonneg)
+    apply (subst phi_nonneg)
+    by auto
+qed
+
+lemma nu_lp_zero_not_odd_or_even:
+  assumes "m > 0"
+  assumes "n > 0"
+  assumes "(m+n) mod 2 \<noteq> 0"
+  assumes "p \<ge> 0" "p \<le> 1"
+  shows "(\<nu>\<^sub>l\<^sub>p p m n) = 0"
+  using assms 
+proof (induct p m n rule: nu_lp.induct)
+  case (1 p)
+  then show ?case by fastforce
+next
+  case (2 p n)
+  then show ?case by blast
+next
+  case (3 p m)
+  then show ?case by blast
+next
+  case (4 p m n)
+  then show ?case
+    apply (simp)
+    apply (subst sum_nonneg_eq_0_iff)
+    apply blast
+    apply (rule mult_nonneg_nonneg)
+    apply (subst phi_nonneg)
+    apply blast
+    apply blast
+    apply simp
+    using nu_lp_nonneg apply presburger
+    apply auto
+    apply (rule phi_even_0)
+    by (metis (no_types, lifting) even_Suc less_Suc_eq_0_disj mod_eq_dvd_iff_nat not_le_minus 
+        nu_lp.elims odd_add odd_one parity_cases)
+qed
+  
+lemma nu_lp_zero:
+  assumes "m > 0"
+  assumes "n > 0"
+  assumes "m > n"
+  shows "(\<nu>\<^sub>l\<^sub>p p m n) = 0"
+  using assms 
+proof (induct p m n rule: nu_lp.induct)
+  case (1 p)
+  then show ?case by fastforce
+next
+  case (2 p n)
+  then show ?case by blast
+next
+  case (3 p m)
+  then show ?case by blast
+next
+  case (4 p m n)
+  then show ?case
+    apply (simp)
+    apply (subst sum_nonneg_eq_0_iff)
+    apply blast
+    apply (metis Suc_pred atLeast0AtMost atMost_iff dual_order.refl lambda_zero less_le mult.commute 
+        nu_lp.simps(3) trace_class.less_iff zero_le)
+    by (metis arith_simps(63) atLeastAtMost_iff less_imp_Suc_add nu_lp.simps(3) zero_less_iff_neq_zero)
+qed
+
+lemma nu_lp_m_1_is_phi: "\<nu>\<^sub>l\<^sub>p p 1 n = phi p n"
+  apply (induction n)
+  apply (simp add: phi_def)
+  apply (simp)
+proof -
+  fix n :: "\<nat>"
+  assume a1: "\<nu>\<^sub>l\<^sub>p p (Suc (0::\<nat>)) n = phi p n"
+
+  let ?f = "\<lambda>i\<^sub>1. phi p (Suc n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p (0::\<nat>) i\<^sub>1"
+  have f0: "(\<Sum>i\<^sub>1::\<nat>\<in>{0::\<nat>}. ?f i\<^sub>1) = phi p (Suc n)"
+    by simp
+  have f1n: "(\<Sum>i\<^sub>1::\<nat> = 1::\<nat>..n. ?f i\<^sub>1) = 0"
+    using nu_lp_0_n_neq_0 by simp
+    
+  have f2: "(\<Sum>i\<^sub>1::\<nat> = 0::\<nat>..n. phi p (Suc n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p (0::\<nat>) i\<^sub>1) = 
+        (\<Sum>i\<^sub>1 \<in> {0} \<union> {1..(n)}. phi p (Suc n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p (0::\<nat>) i\<^sub>1)"
+    by (smt (verit) One_nat_def Un_Diff_cancel atLeast0AtMost atLeast1_atMost_eq_remove0 atMost_iff 
+        insert_absorb insert_is_Un zero_order(1))
+  have f3: "... = phi p (Suc n)"
+    apply (subst sum_Un[where A = "{0}" and B = "{1..n}" ])
+    apply (simp)
+    apply (simp)
+    apply (simp only: f0 f1n)
+    by (simp add: comm_monoid_set.empty)
+  then show "(\<Sum>i\<^sub>1::\<nat> = 0::\<nat>..n. ?f i\<^sub>1) = phi p (Suc n)"
+    using f2 by presburger
+qed
+
+lemma phi_2n_1_eq_nu_lp:
+  assumes "n \<ge> 1"
+  shows "phi p (2*n + 1) = (1 - p) * nu_lp p 2 (2*n)"
+proof -
+  let ?h = "(\<lambda>k. 2*k + 1)"
+  have h_inj_on: "inj_on ?h {0..(n-1)}"
+    by (simp add: inj_on_def)
+
+  let ?A = "{0..(2*n-1)}"
+  let ?A1 = "{k. k \<in> {0..(2*n-1)} \<and> odd k}"
+  let ?A2 = "{k. k \<in> {0..(2*n-1)} \<and> even k}"
+  let ?A' = "{0..(n-1)}"
+
+  have A1_A2_A: "?A1 \<union> ?A2 = {0..(2*n-1)}"
+    by auto
+    
+  have hA: "(?h ` ?A') = ?A1"
+    apply (simp add: image_def)
+    apply (simp add: set_eq_iff)
+    apply auto
+    using assms apply linarith
+  proof -
+    fix x :: "nat"
+    assume a1: "x \<le> (2::\<nat>) * n - Suc (0::\<nat>)"
+    assume a2: "\<not> even x"
+    show "\<exists>xa::\<nat>\<in>{0::\<nat>..n - Suc (0::\<nat>)}. x = Suc ((2::\<nat>) * xa)"
+      apply (simp add: Bex_def)
+      apply (rule_tac x = "(x - 1) div 2" in exI)
+      apply auto
+      using a1 apply auto[1]
+      using a2 by force
+  qed
+
+  have n_k: "\<forall>k\<le>n-1. n - Suc k + k = n - 1"
+    by auto
+
+  let ?f = "\<lambda>i\<^sub>1. (phi p ((2*n) - i\<^sub>1)) * (\<nu>\<^sub>l\<^sub>p p 1 i\<^sub>1)"
+  let ?f1 = "\<lambda>i\<^sub>1. (phi p ((2*n) - i\<^sub>1)) * (phi p i\<^sub>1)"
+  let ?f2 = "\<lambda>i\<^sub>1. phi p (Suc n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p (0::\<nat>) i\<^sub>1"
+
+  have nu_lp_2_2n_def: "nu_lp p 2 (2*n) = (\<Sum>i\<^sub>1 \<in> {0..(2*n-1)}. ?f i\<^sub>1)"
+    by (smt (verit) One_nat_def assms cancel_ab_semigroup_add_class.add_diff_cancel_left' 
+        le_numeral_extra(2) mult_eq_0_iff nu_lp.elims numerals(2) plus_1_eq_Suc sum.cong zero_neq_numeral)
+
+  also have nu_lp_2_2n_phi: "... = (\<Sum>i\<^sub>1 \<in> {0..(2*n-1)}. ?f1 i\<^sub>1)"
+    by (simp only: nu_lp_m_1_is_phi)
+
+  also have nu_lp_2_2n_phi_un: "... = (\<Sum>i\<^sub>1 \<in> ?A1 \<union> ?A2. ?f1 i\<^sub>1)"
+    using A1_A2_A by presburger
+
+  also have nu_lp_2_2n_phi_A1: "... = (\<Sum>i\<^sub>1 \<in> ?A1. ?f1 i\<^sub>1)"
+    apply (subst sum_Un)
+    apply simp+
+    by (smt (verit, ccfv_SIG) IntE Rings.ring_distribs(4) mem_Collect_eq phi_def sum.neutral)
+
+  (* also have "... = (\<Sum>i\<^sub>1 \<in> (?h ` ?A'). ?f1 i\<^sub>1)"
+    using hA by presburger *)
+
+  (* also have "... = (\<Sum>i\<^sub>1 \<in> ?A'. ?f1 i\<^sub>1)"
+    apply (subst comm_monoid_set.reindex_cong[where ?A = ""]) *)
+    (*apply (simp add: comm_monoid_set.reindex_cong[where ?h = "(\<lambda>x::\<nat>. Suc ((2::\<nat>) * x))" and 
+          ?A = "{0::\<nat>..n - Suc (0::\<nat>)}" and ?g = "\<lambda>i\<^sub>1. phi p ((2::\<nat>) * n - i\<^sub>1) * phi p i\<^sub>1"])*)
+
+  also have mu_lp_2_2n_phi: "... = (\<Sum>k \<in> ?A'. (phi p (2*(n-1-k) + 1)) * (phi p (2*k+1)))"
+    apply (subst sum.reindex_cong[where A = ?A1 and B = ?A' and g = ?f1 and l = "(\<lambda>k. 2*k + 1)" and 
+       h = "\<lambda>k. (phi p (2*(n-k-1) + 1)) * (phi p (2*k+1))"])
+    using h_inj_on apply blast
+    using hA apply presburger
+    apply auto
+    by (smt (verit, ccfv_SIG) One_nat_def Suc_diff_diff Suc_diff_le add_Suc_shift assms diff_Suc_1 
+        diff_Suc_Suc diff_mult_distrib2 distrib_left mult_2 plus_1_eq_Suc)
+
+  also have "... = (\<Sum>k::\<nat> = 0::\<nat>..n - Suc (0::\<nat>).
+        (let m'::\<nat> = n - Suc k in real (catalan m') * (p * p ^ m') * ((1::\<real>) - p) ^ m') *
+        (real (catalan k) * (p * p ^ k) * ((1::\<real>) - p) ^ k))"
+    by (simp add: phi_def)
+
+  also have "... = (\<Sum>k::\<nat> = 0::\<nat>..n - Suc (0::\<nat>). (let m'::\<nat> = n - Suc k in 
+    real (catalan m') * real (catalan k) * (p ^ m' * p ^ k * p * p) * ((1::\<real>) - p) ^ (m'+k)))"
+    by (metis (mono_tags, opaque_lifting) Groups.mult_ac(3) more_arith_simps(11) power_add)
+
+  also have "... = (\<Sum>k::\<nat> = 0::\<nat>..n - Suc (0::\<nat>). (let m'::\<nat> = n - Suc k in 
+    real (catalan m') * real (catalan k) * (p ^ (n - Suc k + k) * p * p) * ((1::\<real>) - p) ^ (n - Suc k + k)))"
+    by (metis (no_types, opaque_lifting) power_add)
+
+  also have "... = (\<Sum>k::\<nat> = 0::\<nat>..n - Suc (0::\<nat>). (let m'::\<nat> = n - Suc k in 
+    real (catalan m') * real (catalan k) * (p ^ (n - 1) * p * p) * ((1::\<real>) - p) ^ (n - 1)))"
+    by (simp add: n_k)
+
+  also have "... = (\<Sum>k::\<nat> = 0::\<nat>..n - Suc (0::\<nat>). (let m'::\<nat> = n - Suc k in 
+    real (catalan m') * real (catalan k) * (p ^ (n + 1)) * ((1::\<real>) - p) ^ (n - 1)))"
+    by (metis (no_types, opaque_lifting) One_nat_def Suc_n_not_le_n Suc_pred add_Suc_shift assms 
+        bot_nat_0.not_eq_extremum mult.commute nat_arith.rule0 power_Suc)
+
+  also have "... = (\<Sum>k::\<nat> = 0::\<nat>..n - Suc (0::\<nat>). (let m'::\<nat> = n - Suc k in 
+    real (catalan m') * real (catalan k)) * (p ^ (n + 1)) * ((1::\<real>) - p) ^ (n - 1))"
+    by presburger
+  
+  also have "... = (\<Sum>k::\<nat> = 0::\<nat>..n - Suc (0::\<nat>). real (catalan (n - Suc k)) * real (catalan k)) 
+            * (p ^ (n + 1)) * ((1::\<real>) - p) ^ (n - 1)"
+    apply (subst sum_distrib_right[symmetric])
+    apply (subst sum_distrib_right[symmetric])
+    by simp
+
+  also have "... = (\<Sum>k::\<nat> = 0::\<nat>..n - 1. real ((catalan ((n - 1) - k)) * (catalan k))) 
+            * (p ^ (n + 1)) * ((1::\<real>) - p) ^ (n - 1)"
+    using One_nat_def diff_diff_left plus_1_eq_Suc by auto
+
+  also have "... = real (\<Sum>k::\<nat> = 0::\<nat>..n - 1. ((catalan k) * (catalan ((n - 1) - k)))) 
+            * (p ^ (n + 1)) * ((1::\<real>) - p) ^ (n - 1)"
+    apply (simp only: of_nat_sum[symmetric])
+    by (meson Groups.mult_ac(2))
+
+  also have "... = real (\<Sum>k\<le>n - 1. ((catalan k) * (catalan ((n - 1) - k)))) 
+            * (p ^ (n + 1)) * ((1::\<real>) - p) ^ (n - 1)"
+    using atLeast0AtMost by presburger
+  
+  also have "... = real (catalan (Suc (n - 1))) * (p ^ (n + 1)) * ((1::\<real>) - p) ^ (n - 1)"
+    using catalan_Suc by presburger
+
+  also have "... = real (catalan n) * (p ^ (n + 1)) * ((1::\<real>) - p) ^ (n - 1)"
+    using assms by auto
+
+  then have mu_lp_2_2n_simp: "nu_lp p 2 (2*n) = real (catalan n) * (p ^ (n + 1)) * ((1::\<real>) - p) ^ (n - 1)"
+    using calculation by presburger
+
+  show ?thesis
+    apply (simp add: mu_lp_2_2n_simp)
+    using phi_def by (smt (verit, best) Nat.diff_add_assoc2 Suc_1 Suc_eq_numeral add_is_0 
+        add_self_div_2 assms diff_Suc_numeral diff_cancel2 diff_mult_distrib even_Suc 
+        le_numeral_extra(4) mult_2 numeral_1_eq_Suc_0 numeral_One odd_two_times_div_two_nat 
+        ordered_cancel_comm_monoid_diff_class.add_diff_inverse plus_1_eq_Suc power_eq_if 
+        vector_space_over_itself.scale_left_commute zero_less_one_class.zero_le_one)
+qed
+
+lemma mu_nu_eq:
+  assumes "p \<ge> 0" "p \<le> 1"
+  shows "mu_lp p m n = nu_lp p m n"
+  using assms
+proof (induct p m n rule: mu_lp.induct)
+  case (1 p)
+  then show ?case by auto
+next
+  case (2 p n)
+  then show ?case by auto
+next
+  case (3 p m)
+  then show ?case by auto
+next
+  case (4 p m n)
+  then show ?case
+    proof (cases "n < m")
+      case True
+      then show ?thesis using Suc_mono mu_lp_zero nu_lp_zero zero_less_Suc by presburger
+    next
+      case False
+      then have m_le_n: "m \<le> n"
+        by auto
+      then show ?thesis 
+        proof (cases "(m+n) mod 2 = 0")
+          case True
+          then show ?thesis
+            proof (cases "n = 0")
+              case True
+              then have m_0: "m = 0"
+                using m_le_n by blast
+              from True show ?thesis 
+                apply simp
+                apply (simp add: m_0)
+                by (simp add: phi_def)
+            next
+              case False
+              then show ?thesis 
+                apply simp
+              proof -
+                  assume a1: "(0::\<nat>) < n"
+
+                  have "(\<Sum>i\<^sub>1::\<nat> = 0::\<nat>..n. phi p (Suc n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>1) = 
+                    (\<Sum>i\<^sub>1::\<nat> \<in> {0..n-1} \<union> {n}. phi p (Suc n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>1)"
+                    apply (subgoal_tac "{0::\<nat>..n} = {0..n-1} \<union> {n}")
+                    apply presburger
+                    by (metis Suc_pred' Un_insert_right atLeast0_atMost_Suc atLeastAtMost_singleton 
+                        boolean_algebra_cancel.sup0 insert_absorb2 less_zeroE nat_neq_iff not_le_minus 
+                        not_one_le_zero)
+    
+                  also have "... = (\<Sum>i\<^sub>1::\<nat> \<in> {0..n-1}. phi p (Suc n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>1) + phi p (Suc n - n) * \<nu>\<^sub>l\<^sub>p p m n"
+                    apply (subst sum_Un)
+                    apply blast
+                    apply simp+
+                    apply (subgoal_tac "{0::\<nat>..n - Suc (0::\<nat>)} \<inter> {n} = {}")
+                    apply (metis sum_clauses(1))
+                    using a1 by fastforce
+
+                  also have "... = (\<Sum>i\<^sub>1::\<nat> \<in> {0..n-1}. phi p (Suc n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>1) + phi p 1 * \<nu>\<^sub>l\<^sub>p p m n"
+                    by simp+
+
+                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (\<Sum>i\<^sub>1::\<nat> \<in> {0..n-1}. phi p (Suc n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>1)"
+                    using phi_p_1 "4.hyps"(1) "4.prems"(1) "4.prems"(2) by auto
+
+                  have "\<forall>i \<le> n-1. phi p (Suc n - i) = (1-p) * (\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..n-1-i. phi p ((n - i) - i\<^sub>0) * phi p i\<^sub>0)"
+                    apply (rule allI, rule impI)
+                    proof -
+                      fix i
+                      assume "i \<le> n - 1"
+                      show "phi p (Suc n - i) = ((1::\<real>) - p) * (\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..n - (1::\<nat>) - i. phi p (n - i - i\<^sub>0) * phi p i\<^sub>0)" 
+                        proof (cases "even (Suc n - i)")
+                          case True
+                          then show ?thesis 
+                          proof -
+                            have "phi p (Suc n - i) = 0"
+                              using True phi_even_0 by blast
+                            have "\<forall>i\<^sub>0 \<le> n - i. even (n - i - i\<^sub>0) \<or> even i\<^sub>0"
+                              apply (auto)
+                              apply (meson True dvd_diffD even_Suc le_SucI not_less trans_less_add1)
+                              sledgehammer
+                        next
+                          case False
+                          then show ?thesis sorry
+                        qed
+
+
+                  show "p * \<mu>\<^sub>l\<^sub>p p m n + ((1::\<real>) - p) * \<mu>\<^sub>l\<^sub>p p (Suc (Suc m)) n = 
+                        (\<Sum>i\<^sub>1::\<nat> = 0::\<nat>..n. phi p (Suc n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>1)"
+                    sorry
+                qed
+        next
+          case False
+          then show ?thesis
+            apply (subst mu_lp_zero_not_odd_or_even)
+            apply (simp)
+            apply (simp)
+            apply (simp)
+            apply (subst nu_lp_zero_not_odd_or_even)
+            using assms apply simp_all
+            using "4"(3) apply blast
+            using "4"(4) by fastforce
+        qed
+    qed
+qed
+
+subsection \<open> Programs \<close>
 alphabet state = time + 
   x :: nat
 
@@ -776,6 +1214,12 @@ then
     [x=1]*(1-p)*pdiff\<^sub>n\<^sup>2 + (\<Sum>i:{2..n-2}. [x=i]*(p*pdiff\<^sub>n\<^sup>i\<^sup>-\<^sup>1 + (1-p)*pdiff\<^sub>n\<^sup>i\<^sup>+\<^sup>1)) + 
     [x=n-1]*(p*pdiff\<^sub>n\<^sup>n\<^sup>-\<^sup>2 + (1-p)) + [x=n]*(p*pdiff\<^sub>n\<^sup>n\<^sup>-\<^sup>1 + (1-p)) + [x>n]
 *)
+
+text \<open> The probability difference of @{text "x"} being @{text "m"} after @{text "n"} steps, denotes as 
+  @{text "pdiff p m n"}, where @{text "p"} is the probability, @{text "m"} is the value of 
+  @{text "x"} (such as @{text "\<lbrakk>x\<^sup>< = m\<rbrakk>"}) and @{text "n"} is the number of steps in @{text "iterdiff n _ _"}.
+  So @{text "iterdiff n (x\<^sup>< > 0)\<^sub>e (Pt (step p)) = \<Sum>m::nat. pdiff p m n * \<lbrakk>x\<^sup>< = m\<rbrakk>"}
+\<close>
 fun pdiff :: "real \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> real" where
 "pdiff p 0 _ = 0" |
 "pdiff p _ 0 = 0" |
@@ -809,6 +1253,26 @@ value "pdiff p 5 4"
 thm "pdiff.induct"
 thm "pdiff.elims"
 thm "pdiff.simps"
+
+definition "P k N = pdiff (1/2) k N"
+value "pdiff (1/2) 4 9"
+value "pdiff (1/2) 4 100"
+
+fun pdiff' :: "real \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> real" where
+"pdiff' p _ 0 = 1" |
+"pdiff' p 0 _ = 0" |
+"pdiff' p (Suc m) (Suc n) = p * pdiff' p m n + (1-p) * pdiff' p (Suc (Suc m)) n"
+
+value "pdiff' p 0 1"
+value "pdiff' p 2 2"
+value "pdiff' 0.5 2 2"
+value "pdiff' 0.5 2 3"
+value "pdiff' 0.5 2 4"
+value "pdiff' 0.5 2 5"
+value "pdiff' 0.5 2 6"
+value "pdiff' 0.5 2 7"
+value "pdiff' 0.5 2 8"
+value "pdiff' 0.5 5 20"
 
 lemma pdiff_1: "m \<ge> n \<Longrightarrow> pdiff p (Suc m) (Suc n) = 1"
 proof (induct p m n rule: pdiff.induct)
@@ -959,8 +1423,8 @@ lemma pdiff_7_2_simps:
     then show ?case by (simp add: pdiff_1)
   qed
 
-  thm "eventually_mono"
-lemma 
+thm "eventually_mono"
+lemma pdiff_dec_n:
   assumes "m > 0" "n \<ge> 1"
   assumes "(p::real) \<ge> 0" "(p::real) \<le> 1"
   shows "pdiff p m (Suc n) \<le> pdiff p m n"
@@ -1002,7 +1466,57 @@ lemma
     using mult_left_mono by blast
   qed
 
-lemma 
+lemma pdiff_dec_m:
+  assumes "m > 0" "n \<ge> 1"
+  assumes "(p::real) \<ge> 0" "(p::real) \<le> 1"
+  shows "pdiff p m n \<le> pdiff p (Suc m) n"
+  using assms
+  proof (induct p m n rule: pdiff.induct)
+    case (1 p uu)
+    then show ?case by auto
+  next
+    case (2 p v)
+    then show ?case using not_one_le_zero by blast
+  next
+    case (3 p v)
+    then show ?case by (simp add: pdiff_leq_1)
+  next
+    case (4 p)
+    then show ?case using pdiff.simps(5) pdiff_leq_1 by presburger
+  next
+    case (5 p v)
+    then show ?case by auto
+  next
+    case (6 p va)
+    then show ?case apply (subst pdiff.simps(6))
+      by (smt (verit) One_nat_def Suc_1 less_Suc_eq_le mult_left_le mult_nonneg_nonneg not_less_eq_eq 
+          ordered_comm_semiring_class.comm_mult_left_mono pdiff.simps(7) pdiff_geq_0 pdiff_leq_1 zero_less_Suc)
+  next
+    case ("7_1" p va vb)
+    then show ?case apply (subst pdiff.simps(7))
+      apply (auto)
+      apply (smt (verit, best) mult_left_mono)
+      apply (simp add: ordered_comm_semiring_class.comm_mult_left_mono pdiff_1)
+      using mult_left_mono by blast
+  next
+    case ("7_2" p v va)
+    then show ?case apply (subst pdiff.simps(7))
+    apply (auto)
+    apply (smt (verit, best) mult_left_mono)
+    apply (simp add: ordered_comm_semiring_class.comm_mult_left_mono pdiff_1)
+    using mult_left_mono by blast
+  qed
+
+lemma pdiff'_tends_to_0:
+  shows "(\<lambda>n::\<nat>. pdiff' (1/2) m (Suc n)) \<longlonglongrightarrow> (0::\<real>)"
+proof (induction m)
+  case 0
+  show ?case
+    by simp
+next
+ 
+
+lemma pdiff_tends_to_0:
   assumes "m > 0" 
   assumes "(p::real) \<ge> 0" "(p::real) \<le> 1"
   shows "(\<lambda>n::\<nat>. pdiff p m (Suc n)) \<longlonglongrightarrow> (0::\<real>)"
@@ -1154,7 +1668,6 @@ proof
     apply (simp add: pdiff_leq_1 ureal_lower_bound ureal_upper_bound)
     defer
     apply (simp add: real2ureal_inverse)
-    sledgehammer
     sorry
   then show "(\<lambda>n::\<nat>. ureal2real (iter\<^sub>d n (x\<^sup>< > 0)\<^sub>e (Pt (step p)) 1\<^sub>p s)) \<longlonglongrightarrow> (0::\<real>)"
     apply (subst (asm) Suc_eq_plus1)
