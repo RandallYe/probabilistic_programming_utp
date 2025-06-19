@@ -300,7 +300,7 @@ qed
 
 lemma phi_2n_1_eq_nu_lp:
   assumes "n \<ge> 1"
-  shows "phi p (2*n + 1) = (1 - p) * nu_lp p 2 (2*n)"
+  shows "phi p (2*n + 1) = (1 - p) * \<nu>\<^sub>l\<^sub>p p 2 (2*n)"
 proof -
   let ?h = "(\<lambda>k. 2*k + 1)"
   have h_inj_on: "inj_on ?h {0..(n-1)}"
@@ -475,15 +475,85 @@ next
               proof -
                   assume a1: "(0::\<nat>) < n"
 
-                  have "(\<Sum>i\<^sub>1::\<nat> = 0::\<nat>..n. phi p (Suc n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>1) = 
-                    (\<Sum>i\<^sub>1::\<nat> \<in> {0..n-1} \<union> {n}. phi p (Suc n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>1)"
+                  have phi_p_suc_n_i: "\<forall>i \<le> n-1. phi p (Suc n - i) = (1-p) * (\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..n-1-i. phi p ((n - i) - i\<^sub>0) * phi p i\<^sub>0)"
+                    apply (rule allI, rule impI)
+                    proof -
+                      fix i
+                      assume i_n_1: "i \<le> n - 1"
+                      show "phi p (Suc n - i) = ((1::\<real>) - p) * (\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..n - (1::\<nat>) - i. phi p (n - i - i\<^sub>0) * phi p i\<^sub>0)" 
+                        proof (cases "even (Suc n - i)")
+                          case True
+                          then show ?thesis 
+                          proof -
+                            have phi_0: "phi p (Suc n - i) = 0"
+                              using True phi_even_0 by blast
+                            have "\<forall>i\<^sub>0 \<le> n - i. even (n - i - i\<^sub>0) \<or> even i\<^sub>0"
+                              apply (auto)
+                              apply (meson True dvd_diffD even_Suc le_SucI not_less trans_less_add1)
+                              using True by fastforce
+                            then have "(\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..n - (1::\<nat>) - i. phi p (n - i - i\<^sub>0) * phi p i\<^sub>0) = 0"
+                              using phi_even_0 
+                              by (metis (no_types, lifting) even_diff_nat linorder_not_less mult_eq_0_iff sum.neutral)
+                            then show ?thesis
+                              by (metis mult_zero_right phi_0)
+                          qed
+                        next
+                          case False
+                          obtain l where P_l: "2*l + 1 = (Suc n - i)" 
+                            by (metis False oddE)
+
+                          have "phi p (Suc n - i) = phi p (2*l + 1)"
+                            using P_l by simp
+                          also have "... = (1 - p) * \<nu>\<^sub>l\<^sub>p p 2 (2*l)"
+                            using phi_2n_1_eq_nu_lp i_n_1
+                            by (metis False Nat.le_diff_conv2 P_l Suc_leI Suc_n_not_le_n a1 
+                                add.commute add_diff_inverse_nat bot_nat_0.not_eq_extremum 
+                                even_diff_nat numeral_nat(7) plus_1_eq_Suc semiring_norm(64))
+                          also have "... = (1 - p) * \<nu>\<^sub>l\<^sub>p p (Suc 1) (Suc (2*l-1))"
+                            by (metis Groups.add_ac(2) One_nat_def Suc_1 Suc_diff_1 
+                                  bot_nat_0.not_eq_extremum le_add_diff_inverse lessI not_le_minus 
+                                  nu_lp.simps(3) nu_lp_zero semiring_norm(174) zero_less_Suc)
+                          also have "... = (1 - p) * (\<Sum>i\<^sub>1 \<in> {0..(2*l-1)}. (phi p (2*l - i\<^sub>1)) * (\<nu>\<^sub>l\<^sub>p p 1 i\<^sub>1))"
+                            apply (simp only: nu_lp.simps(4))
+                            by (metis (mono_tags, opaque_lifting) Suc_le_eq Suc_pred' 
+                                bot_nat_0.not_eq_extremum diff_is_0_eq' nu_lp_m_1_is_phi 
+                                odd_Suc_minus_one phi_even_0 semiring_norm(64) zero_diff zero_less_Suc)
+                          also have "... = (1 - p) * (\<Sum>i\<^sub>1 \<in> {0..(2*l-1)}. (phi p (2*l - i\<^sub>1)) * (phi p i\<^sub>1))"
+                            using nu_lp_m_1_is_phi by presburger
+                          also have "... = (1 - p) * (\<Sum>i\<^sub>1 \<in> {0..((Suc n - i)-2)}. (phi p ((Suc n - i) - 1 - i\<^sub>1)) * (phi p i\<^sub>1))"
+                            using P_l by (metis (no_types, lifting) Suc_1 Suc_eq_plus1 diff_Suc_1 diff_diff_left sum.cong)
+                          finally show ?thesis
+                            by force
+                        qed
+                      qed
+
+                  (* Swap sum *)
+                  have sigma_xy: "(SIGMA x::\<nat>:{0::\<nat>..n - (1::\<nat>)}. {x..n - (1::\<nat>)}) = {(x, y). 0 \<le> x \<and> x \<le> n - 1 \<and> x \<le> y \<and> y \<le> n - 1}"
+                    apply (simp add: Sigma_def)
+                    by auto
+
+                  have sigma_yx: "(SIGMA x::\<nat>:{0::\<nat>..n - (1::\<nat>)}. {0..x}) = {(x, y). 0 \<le> x \<and> x \<le> n - 1 \<and> 0 \<le> y \<and> y \<le> x}"
+                    apply (simp add: Sigma_def)
+                    by auto
+
+                  have sigma_xy_swap: "{(x, y). 0 \<le> x \<and> x \<le> n - 1 \<and> x \<le> y \<and> y \<le> n - 1} 
+                         = prod.swap ` {(x, y). 0 \<le> x \<and> x \<le> n - 1 \<and> 0 \<le> y \<and> y \<le> x}"
+                    apply (simp add: image_def)
+                    by auto
+
+                  have sigma_xy_swap': "(SIGMA x::\<nat>:{0::\<nat>..n - (1::\<nat>)}. {x..n - (1::\<nat>)})
+                        = prod.swap ` (SIGMA x::\<nat>:{0::\<nat>..n - (1::\<nat>)}. {0..x})"
+                    using sigma_xy sigma_xy_swap sigma_yx by presburger
+
+                  have "(\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..n. phi p (Suc n - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0) = 
+                    (\<Sum>i\<^sub>0::\<nat> \<in> {0..n-1} \<union> {n}. phi p (Suc n - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0)"
                     apply (subgoal_tac "{0::\<nat>..n} = {0..n-1} \<union> {n}")
                     apply presburger
                     by (metis Suc_pred' Un_insert_right atLeast0_atMost_Suc atLeastAtMost_singleton 
                         boolean_algebra_cancel.sup0 insert_absorb2 less_zeroE nat_neq_iff not_le_minus 
                         not_one_le_zero)
     
-                  also have "... = (\<Sum>i\<^sub>1::\<nat> \<in> {0..n-1}. phi p (Suc n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>1) + phi p (Suc n - n) * \<nu>\<^sub>l\<^sub>p p m n"
+                  also have "... = (\<Sum>i\<^sub>0::\<nat> \<in> {0..n-1}. phi p (Suc n - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0) + phi p (Suc n - n) * \<nu>\<^sub>l\<^sub>p p m n"
                     apply (subst sum_Un)
                     apply blast
                     apply simp+
@@ -491,33 +561,82 @@ next
                     apply (metis sum_clauses(1))
                     using a1 by fastforce
 
-                  also have "... = (\<Sum>i\<^sub>1::\<nat> \<in> {0..n-1}. phi p (Suc n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>1) + phi p 1 * \<nu>\<^sub>l\<^sub>p p m n"
+                  also have "... = (\<Sum>i\<^sub>0::\<nat> \<in> {0..n-1}. phi p (Suc n - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0) + phi p 1 * \<nu>\<^sub>l\<^sub>p p m n"
                     by simp+
 
-                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (\<Sum>i\<^sub>1::\<nat> \<in> {0..n-1}. phi p (Suc n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>1)"
+                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (\<Sum>i\<^sub>0::\<nat> \<in> {0..n-1}. phi p (Suc n - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0)"
                     using phi_p_1 "4.hyps"(1) "4.prems"(1) "4.prems"(2) by auto
 
-                  have "\<forall>i \<le> n-1. phi p (Suc n - i) = (1-p) * (\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..n-1-i. phi p ((n - i) - i\<^sub>0) * phi p i\<^sub>0)"
-                    apply (rule allI, rule impI)
-                    proof -
-                      fix i
-                      assume "i \<le> n - 1"
-                      show "phi p (Suc n - i) = ((1::\<real>) - p) * (\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..n - (1::\<nat>) - i. phi p (n - i - i\<^sub>0) * phi p i\<^sub>0)" 
-                        proof (cases "even (Suc n - i)")
-                          case True
-                          then show ?thesis 
-                          proof -
-                            have "phi p (Suc n - i) = 0"
-                              using True phi_even_0 by blast
-                            have "\<forall>i\<^sub>0 \<le> n - i. even (n - i - i\<^sub>0) \<or> even i\<^sub>0"
-                              apply (auto)
-                              apply (meson True dvd_diffD even_Suc le_SucI not_less trans_less_add1)
-                              sledgehammer
-                        next
-                          case False
-                          then show ?thesis sorry
-                        qed
+                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (\<Sum>i\<^sub>0::\<nat> \<in> {0..n-1}. 
+                      (1-p) * (\<Sum>i\<^sub>1::\<nat> = 0::\<nat>..n-1-i\<^sub>0. phi p ((n - i\<^sub>0) - i\<^sub>1) * phi p i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0)"
+                    by (simp add: phi_p_suc_n_i)
 
+                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (1-p) * (\<Sum>i\<^sub>0::\<nat> \<in> {0..n-1}. 
+                      (\<Sum>i\<^sub>1::\<nat> = 0::\<nat>..n-1-i\<^sub>0. phi p ((n - i\<^sub>0) - i\<^sub>1) * phi p i\<^sub>1 * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0))"
+                    by (simp add: mult.commute mult.left_commute sum_distrib_left)
+
+                  (* reindex *)
+                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (1-p) * (\<Sum>i\<^sub>0::\<nat> \<in> {0..n-1}. 
+                      (\<Sum>i\<^sub>1::\<nat> = i\<^sub>0::\<nat>..n-1. phi p (n - i\<^sub>1) * phi p (i\<^sub>1 - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0))"
+                    apply (subst sum.cong_simp[where B = "{0..n-1}" and 
+                      g = "\<lambda>i\<^sub>0. (\<Sum>i\<^sub>1::\<nat> = i\<^sub>0::\<nat>..n-1. phi p (n - i\<^sub>1) * phi p (i\<^sub>1 - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0)"
+                      and h = "\<lambda>i\<^sub>0. (\<Sum>i\<^sub>1::\<nat> = 0::\<nat>..n-1-i\<^sub>0. phi p ((n - i\<^sub>0) - i\<^sub>1) * phi p i\<^sub>1 * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0)"])
+                    apply auto
+                    apply (simp add: simp_implies_def)
+                    apply (subst sum.reindex_cong[where l = "\<lambda>y. x + y" and B = "{0::\<nat>..n - Suc x}"
+                         and A = "{x..n - Suc (0::\<nat>)}" and g = "\<lambda>i\<^sub>1. phi p (n - i\<^sub>1) * phi p (i\<^sub>1 - x) * \<nu>\<^sub>l\<^sub>p p m x"
+                         and h = "\<lambda>i\<^sub>1. phi p (n - (x + i\<^sub>1)) * phi p i\<^sub>1 * \<nu>\<^sub>l\<^sub>p p m x"])
+                    by auto
+
+                 (* i\<^sub>1 \<longrightarrow> i\<^sub>1 - i\<^sub>0 *)
+                 (* i\<^sub>0 \<in> [0..n-1], i\<^sub>1 \<in> [i\<^sub>0..n-1] *)
+                 (* i\<^sub>1 \<in> [0..n-1], i\<^sub>0 \<in> [0..i\<^sub>1-1] *)
+                 (*                            phi p (n - i\<^sub>0 - i\<^sub>1)     phi p i\<^sub>1     \<nu>\<^sub>l\<^sub>p p m i\<^sub>0
+                     if n = 3,
+                      i\<^sub>0 [0..2], i\<^sub>1 [i\<^sub>0..2], phi p (n - i\<^sub>1) * phi p (i\<^sub>1 - i\<^sub>0) * * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0
+                          0, 0
+                          0, 1
+                          0, 2
+                          1, 1 
+                          1, 2
+                          2, 2
+
+                    i\<^sub>1 [0..n-1], i\<^sub>0 [0..i\<^sub>1], phi p (n - i\<^sub>1 + 1) * phi p (i\<^sub>1 - 1 - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0
+                          0, 0 
+                          1, 0
+                          1, 1
+                          2, 0
+                          2, 1
+                          2, 2
+                  *)
+
+                  (* (i\<^sub>0::\<nat>, i\<^sub>1::\<nat>)\<in>(SIGMA x::\<nat>:{0::\<nat>..n - (1::\<nat>)}. {x..n - (1::\<nat>)}) *)
+                  (* (i\<^sub>1::\<nat>, i\<^sub>0::\<nat>)\<in>(SIGMA x::\<nat>:{0::\<nat>..n - (1::\<nat>)}. {0..x}) *)
+
+                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (1-p) * (\<Sum>i\<^sub>1::\<nat> \<in> {0..n-1}.
+                      (\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..i\<^sub>1. phi p (n - i\<^sub>1) * phi p (i\<^sub>1 - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0))"
+                    apply (subst sum.Sigma)
+                    apply blast
+                    apply blast
+                    apply (subst sum.Sigma)
+                    apply blast
+                    apply blast
+                    apply (simp only: sigma_xy_swap')
+                    apply (subst sum.reindex_bij_witness [where i = "\<lambda>(i, j). (j, i)" and j = "\<lambda>(i, j). (j, i)" and
+                          S = "prod.swap ` Sigma {0::\<nat>..n - (1::\<nat>)} (atLeastAtMost (0::\<nat>))" and
+                          T = "Sigma {0::\<nat>..n - (1::\<nat>)} (atLeastAtMost (0::\<nat>))" and
+                          h = "\<lambda> (i\<^sub>1, i\<^sub>0). phi p (n - i\<^sub>1) * phi p (i\<^sub>1 - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0"])
+                    apply fastforce
+                    apply force
+                    apply auto[1]
+                    using swap_simp apply fastforce
+                    apply (simp add: image_def Sigma_def prod.swap_def)
+                     apply force
+                    by simp
+
+                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (1-p) * (\<Sum>i\<^sub>1::\<nat> \<in> {0..n-1}. phi p (n - i\<^sub>1) *
+                      (\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..i\<^sub>1. phi p (i\<^sub>1 - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0))"
+                    apply (subst sum_distrib_left[symmetric])
 
                   show "p * \<mu>\<^sub>l\<^sub>p p m n + ((1::\<real>) - p) * \<mu>\<^sub>l\<^sub>p p (Suc (Suc m)) n = 
                         (\<Sum>i\<^sub>1::\<nat> = 0::\<nat>..n. phi p (Suc n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>1)"
@@ -536,7 +655,9 @@ next
             using "4"(4) by fastforce
         qed
     qed
-qed
+  qed
+
+  thm "sum.cartesian_product"
 
 subsection \<open> Programs \<close>
 alphabet state = time + 
