@@ -545,26 +545,6 @@ next
                         = prod.swap ` (SIGMA x::\<nat>:{0::\<nat>..n - (1::\<nat>)}. {0..x})"
                     using sigma_xy sigma_xy_swap sigma_yx by presburger
 
-                  have "\<forall>x \<le> n - 1. (\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..x - Suc (0::\<nat>). phi p (x - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0) =
-                    (\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..x - Suc (0::\<nat>). phi p (Suc (x - Suc (0::\<nat>)) - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0)"
-                    apply auto
-                    proof -
-                      fix x
-                      assume "x \<le> n - Suc (0::\<nat>)"
-                      show "(\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..x - Suc (0::\<nat>). phi p (x - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0) =
-                        (\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..x - Suc (0::\<nat>). phi p (Suc (x - Suc (0::\<nat>)) - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0)"
-                        proof (cases "x = 0")
-                          case True
-                          then show ?thesis 
-                            apply auto
-                            sorry
-                        next
-                          case False
-                          then show ?thesis sorry
-                        qed
-                      qed
-                      
-
                   have "(\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..n. phi p (Suc n - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0) = 
                     (\<Sum>i\<^sub>0::\<nat> \<in> {0..n-1} \<union> {n}. phi p (Suc n - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0)"
                     apply (subgoal_tac "{0::\<nat>..n} = {0..n-1} \<union> {n}")
@@ -677,10 +657,10 @@ next
                     using atLeast0AtMost by auto
 
                   also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (1-p) * (\<Sum>i\<^sub>1::\<nat> \<in> {0..n-1}. phi p (n - i\<^sub>1) *
-                      ((\<Sum>i\<^sub>0::\<nat> \<in> {0::\<nat>..i\<^sub>1-1}. phi p (Suc (i\<^sub>1 - 1) - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0)))"
+                      ((\<Sum>i\<^sub>0::\<nat> \<in> {0::\<nat>..i\<^sub>1-1}. phi p (i\<^sub>1 - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0)))"
                     apply (subst sum.cong_simp[where B = "{0..n-1}" and 
                       g = "\<lambda>i\<^sub>1. phi p (n - i\<^sub>1) * (\<Sum>i\<^sub>0::\<nat>\<in>{0::\<nat>..i\<^sub>1 - (1::\<nat>)} \<union> {i\<^sub>1}. phi p (i\<^sub>1 - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0)"
-                      and h = "\<lambda>i\<^sub>1. phi p (n - i\<^sub>1) * ((\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..i\<^sub>1 - (1::\<nat>). phi p (Suc (i\<^sub>1 - 1) - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0) + 
+                      and h = "\<lambda>i\<^sub>1. phi p (n - i\<^sub>1) * ((\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..i\<^sub>1 - (1::\<nat>). phi p (i\<^sub>1 - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0) + 
                             (phi p (i\<^sub>1 - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>1))"])
                     apply meson
                     apply (simp only: simp_implies_def)
@@ -688,22 +668,53 @@ next
                     apply simp
                     apply simp
                     using Int_empty_right empty_iff mult_eq_0_iff phi_even_0 apply auto[1]
-                    apply (subgoal_tac "(\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..x - Suc (0::\<nat>). phi p (x - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0) =
-                        (\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..x - Suc (0::\<nat>). phi p (Suc (x - Suc (0::\<nat>)) - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0)")
-                    apply meson
-                    apply (cases "x = (0::nat)")
                     apply (subgoal_tac "phi p 0 = 0")
                     apply fastforce
                     by (simp add: phi_def)
+                  (* Take out of i\<^sub>1 = 0 *)
+                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (1-p) * (\<Sum>i\<^sub>1::\<nat> \<in> {0} \<union> {1..n-1}. phi p (n - i\<^sub>1) *
+                      ((\<Sum>i\<^sub>0::\<nat> \<in> {0::\<nat>..i\<^sub>1-1}. phi p (i\<^sub>1 - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0)))"
+                    by (smt (verit) Suc_eq_plus1 Un_Diff_cancel Un_insert_left add_0 atLeast0AtMost 
+                        atLeast1_atMost_eq_remove0 atMost_iff insert_absorb sup_bot_left zero_le)
 
-                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (1-p) * (\<Sum>i\<^sub>1::\<nat> \<in> {0..n-1}. phi p (n - i\<^sub>1) *
+                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (1-p) * (\<Sum>i\<^sub>1::\<nat> \<in> {1..n-1}. phi p (n - i\<^sub>1) *
+                      ((\<Sum>i\<^sub>0::\<nat> \<in> {0::\<nat>..i\<^sub>1-1}. phi p (i\<^sub>1 - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0)))"
+                    apply (subst sum_Un)
+                    apply simp+
+                    using phi_even_0 by auto
+
+                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (1-p) * (\<Sum>i\<^sub>1::\<nat> \<in> {1..n-1}. phi p (n - i\<^sub>1) *
                       ((\<Sum>i\<^sub>0::\<nat> \<in> {0::\<nat>..i\<^sub>1-1}. phi p (Suc (i\<^sub>1 - 1) - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0)))"
-                    sledgehammer
+                    apply (subgoal_tac "\<forall>x \<in> {1.. n - 1}. (\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..x - 1. phi p (x - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0) =
+                                        (\<Sum>i\<^sub>0::\<nat> = 0::\<nat>..x - 1. phi p (Suc (x - 1) - i\<^sub>0) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>0)")
+                    apply auto[1]
+                    by auto
 
-                  show "p * \<mu>\<^sub>l\<^sub>p p m n + ((1::\<real>) - p) * \<mu>\<^sub>l\<^sub>p p (Suc (Suc m)) n = 
+                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (1-p) * (\<Sum>i\<^sub>1::\<nat> \<in> {1..n-1}. phi p (n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p (Suc m) (Suc (i\<^sub>1 - 1)))"
+                    using nu_lp.simps(4) by presburger
+
+                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (1-p) * (\<Sum>i\<^sub>1::\<nat> \<in> {1..n-1}. phi p (n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p (Suc m) i\<^sub>1)"
+                    by auto
+
+                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (1-p) * (\<Sum>i\<^sub>1::\<nat> \<in> {0} \<union> {1..n-1}. phi p (n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p (Suc m) i\<^sub>1)"
+                    by auto
+    
+                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (1-p) * (\<Sum>i\<^sub>1::\<nat> \<in> {0..n-1}. phi p (Suc (n-1) - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p (Suc m) i\<^sub>1)"
+                    apply (subgoal_tac "{0} \<union> {1..n-1} = {0..n-1}")
+                    using Suc_pred' a1 apply presburger
+                    by auto
+
+                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (1-p) * \<nu>\<^sub>l\<^sub>p p (Suc (Suc m)) (Suc (n - 1))"
+                    using nu_lp.simps(4) a1 by presburger
+
+                  also have "... = p * \<mu>\<^sub>l\<^sub>p p m n + (1-p) * \<nu>\<^sub>l\<^sub>p p (Suc (Suc m)) n"
+                    using Suc_pred' a1 by presburger
+
+                  finally show "p * \<mu>\<^sub>l\<^sub>p p m n + ((1::\<real>) - p) * \<mu>\<^sub>l\<^sub>p p (Suc (Suc m)) n = 
                         (\<Sum>i\<^sub>1::\<nat> = 0::\<nat>..n. phi p (Suc n - i\<^sub>1) * \<nu>\<^sub>l\<^sub>p p m i\<^sub>1)"
-                    sorry
+                    using "4"(4) "4.hyps"(2) "4.prems"(1) by presburger
                 qed
+            qed
         next
           case False
           then show ?thesis
@@ -718,8 +729,6 @@ next
         qed
     qed
   qed
-
-  thm "sum.cartesian_product"
 
 subsection \<open> Programs \<close>
 alphabet state = time + 
