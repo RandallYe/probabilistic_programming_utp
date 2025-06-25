@@ -1427,6 +1427,36 @@ fun pdiff :: "real \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> real" where
     p * pdiff p i n + (1-p)
 )"
 
+(*
+	m=0	1	2	3	4	5	6	7	8
+n=0	0	0	0	0	0	0	0	0	0
+1	0	1	1	1	1	1	1	1	1
+2	0	0.5	1	1	1	1	1	1	1
+3	0	0.5	0.75	1	1	1	1	1	1
+4	0	0.375	0.75	0.875	1	1	1	1	1
+5	0	0.375	0.625	0.875	0.9375	1	1	1	1
+6	0	0.3125	0.625	0.78125	0.9375	0.96875	1	1	1
+7	0	0.3125	0.546875	0.78125	0.875	0.96875	0.984375	1	1
+8	0	0.2734375	0.546875	0.7109375	0.875	0.9296875	0.984375	0.9921875	1
+*)
+
+(*
+  For "pdiff p m n", it can reach to position (0 or 1, n=1) to (m + n - 1, 1) in (n - 1) steps
+
+    S1. if m = 0 \<or> n = 0,  pdiff p m n = 0
+    S2. else if m \<ge> n,   pdiff p m n = 1
+    S3. else (m < n) 
+      pdiff p m n = \<Sum>k \<in> {(if even(m+n) then 1 else 0) .. m+n-1}. 
+        ((n-1) choose r) * (pdiff p k 1) * p ^ (n - 1 - r) * q ^ r 
+      where r = (((n - 1) + (k - m)) / 2), represent the number of right-moving steps
+*)
+
+(*
+  illustrations: if n = 4, m = 2, (m+n-1=5). \<Sum>{1,3,5}. 
+      (3 choose (3 - 1) / 2) * p^(3-1)*q^1 = 3 * p^2*q^1
+      (3 choose (3 + 1) / 2) * p^1*q^2  = 3 * p^1*q^2  
+      (3 choose (3 + 3) / 2) * p^0*q^3 = q^3
+*)
 value "pdiff p 0 1"
 value "pdiff p 1 1"
 value "pdiff p 0 2"
@@ -1446,9 +1476,106 @@ thm "pdiff.induct"
 thm "pdiff.elims"
 thm "pdiff.simps"
 
+fun pdiff1 :: "real \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> real" where
+"pdiff1 p 0 _ = 0" |
+"pdiff1 p _ 0 = 0" |
+"pdiff1 p _ (Suc 0) = 1" |
+"pdiff1 p (Suc i) (Suc n) = (if i < n
+  then 
+    p * pdiff1 p i n + (1-p) * pdiff1 p (Suc (Suc i)) n 
+  else 
+    p * pdiff1 p i n + (1-p)
+)"
+
+value "pdiff1 p 0 1 = pdiff p 0 1"
+value "pdiff1 p 1 1 = pdiff p 1 1"
+value "pdiff1 p 0 2 = pdiff p 0 2"
+value "pdiff1 p 1 2 = pdiff p 1 2"
+value "pdiff1 p 2 2 = pdiff p 2 2"
+value "pdiff1 p 3 2 = pdiff p 3 2"
+value "pdiff1 p 5 2 = pdiff p 5 2"
+value "pdiff1 p 1 3 = pdiff p 1 3"
+value "pdiff1 p 2 3 = pdiff p 2 3"
+value "pdiff1 p 3 3 = pdiff p 3 3"
+value "pdiff1 p 5 3 = pdiff p 5 3"
+value "pdiff1 p 1 4 = pdiff p 1 4"
+value "pdiff1 p 2 4 = pdiff p 2 4"
+value "pdiff1 p 3 4 = pdiff p 3 4"
+value "pdiff1 p 5 4 = pdiff p 5 4"
+
+fun pdiff2 :: "real \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> real" where
+"pdiff2 p 0 _ = 0" |
+"pdiff2 p _ 0 = 0" |
+"pdiff2 p _ (Suc 0) = 1" |
+"pdiff2 p (Suc i) (Suc n) = p * pdiff2 p i n + (1-p) * pdiff2 p (Suc (Suc i)) n"
+
+value "pdiff2 p 0 1 = pdiff p 0 1"
+value "pdiff2 p 1 1 = pdiff p 1 1"
+value "pdiff2 p 0 2 = pdiff p 0 2"
+value "pdiff2 p 1 2 = pdiff p 1 2"
+value "pdiff2 p 2 2 = pdiff p 2 2"
+value "pdiff2 p 3 2 = pdiff p 3 2"
+value "pdiff2 p 5 2 = pdiff p 5 2"
+value "pdiff2 p 1 3 = pdiff p 1 3"
+value "pdiff2 p 2 3 = pdiff p 2 3"
+value "pdiff2 p 3 3 = pdiff p 3 3"
+value "pdiff2 p 5 3 = pdiff p 5 3"
+value "pdiff2 p 1 4 = pdiff p 1 4"
+value "pdiff2 p 2 4 = pdiff p 2 4"
+value "pdiff2 p 3 4 = pdiff p 3 4"
+value "pdiff2 p 5 4 = pdiff p 5 4"
+
+lemma pdiff2_closed_form:
+  assumes "1 \<le> i" "i \<le> n"
+  shows "pdiff2 p i n = (of_nat ((n - 1) choose (i - 1))) * p^(i - 1) * (1 - p)^(n - i)"
+
+lemma pdiff_m_0_0:
+  shows "pdiff p 0 n = 0"
+  by auto
+
+lemma pdiff_n_0_0:
+  shows "pdiff p m 0 = 0"
+  using pdiff.elims by blast
+
+lemma pdiff_n_1_1:
+  assumes "m > 0"
+  shows "pdiff p m 1 = 1"
+  using assms gr0_conv_Suc by fastforce
+
+lemma pdiff_m_1_n_2_1_p:
+  shows "pdiff p 1 2 = 1 - p"
+  using One_nat_def Suc_1 pdiff.simps(4) by presburger
+
+lemma pdiff_m_n_2_1:
+  assumes "m > 0"
+  shows "pdiff p (m+1) 2 = 1"
+  by (metis One_nat_def Suc_1 Suc_pred add.commute assms pdiff.simps(5) plus_1_eq_Suc)
+
+lemma pdiff_m_1_n_1:
+  assumes "n > 1"
+  shows "pdiff p 1 (Suc n) = (1-p) * pdiff p 2 n"
+  by (metis assms less_natE numeral_nat(7) pdiff.simps(6) plus_1_eq_Suc)
+
+lemma pdiff_m_gt_n_0:
+  assumes "n \<ge> 2" "m \<ge> n"
+  shows "pdiff p m n = (m div n) * (n choose ((n+m) div 2)) * p^((n+m) div 2) * (1 - p)^((n - m) div 2)"
+  sorry
+
+lemma pdiff_m_gt_n_1:
+  assumes "n \<ge> 1" "n \<le> m"
+  shows "pdiff p m n = 1"
+  sledgehammer
+
+(* https://en.wikipedia.org/wiki/Bertrand%27s_ballot_theorem *)
+(* Feller, "An Introduction to Probability Theory and Its Applications", Vol. 1, Section III.6 (Ballot problem) *)
+lemma 
+  assumes "(m::nat) \<ge> 0" "n \<ge> m" "even (m+n)"
+  shows "pdiff p m n = (m div n) * (n choose ((n+m) div 2)) * p^((n+m) div 2) * (1 - p)^((n - m) div 2)"
+  sorry
+
+
 definition "P k N = pdiff (1/2) k N"
 value "pdiff (1/2) 4 9"
-value "pdiff (1/2) 4 100"
 
 fun pdiff' :: "real \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> real" where
 "pdiff' p _ 0 = 1" |
@@ -1465,6 +1592,11 @@ value "pdiff' 0.5 2 6"
 value "pdiff' 0.5 2 7"
 value "pdiff' 0.5 2 8"
 value "pdiff' 0.5 5 20"
+
+lemma 
+  assumes "(m::nat) \<ge> 0" "n \<ge> m" "even (m+n)"
+  shows "pdiff' p m n = (n choose ((n+m) div 2)) * p^((n+m) div 2) * (1 - p)^((n - m) div 2)"
+  sorry
 
 lemma pdiff_1: "m \<ge> n \<Longrightarrow> pdiff p (Suc m) (Suc n) = 1"
 proof (induct p m n rule: pdiff.induct)
@@ -1701,12 +1833,42 @@ lemma pdiff_dec_m:
 
 lemma pdiff'_tends_to_0:
   shows "(\<lambda>n::\<nat>. pdiff' (1/2) m (Suc n)) \<longlonglongrightarrow> (0::\<real>)"
+proof (induction m rule: less_induct)
+  case (less m)
+  show ?case
+  proof (cases m)
+    case 0
+    then show ?thesis by simp
+  next
+    case (Suc m')
+    have eq: "pdiff' (1/2) (Suc m') (Suc n) = (1/2) * pdiff' (1/2) m' n + (1/2) * pdiff' (1/2) (Suc (Suc m')) n"
+      by simp
+    have lim1: "(\<lambda>n. (1/2) * pdiff' (1/2) m' n) \<longlonglongrightarrow> 0"
+      using less.IH[of m'] tendsto_mult_right_zero less_Suc_eq
+      by (metis LIMSEQ_imp_Suc Suc)
+    have lim2: "(\<lambda>n. (1/2) * pdiff' (1/2) (Suc (Suc m')) n) \<longlonglongrightarrow> 0"
+      using less.IH[of "Suc (Suc m')"] tendsto_mult_right_zero less_Suc_eq apply auto
+      sledgehammer
+    show ?thesis
+      by (simp add: eq lim1 lim2 tendsto_add)
+  qed
+qed
+
 proof (induction m)
   case 0
   show ?case
     by simp
 next
- 
+  case (Suc m)
+  have eq: "pdiff' (1/2) (Suc m) (Suc n) = (1/2) * pdiff' (1/2) m n + (1/2) * pdiff' (1/2) (Suc (Suc m)) n"
+    by simp
+  have lim1: "(\<lambda>n. (1/2) * pdiff' (1/2) m n) \<longlonglongrightarrow> 0"
+    using Suc.IH(1) tendsto_mult_right_zero LIMSEQ_imp_Suc by blast
+  have lim2: "(\<lambda>n. (1/2) * pdiff' (1/2) (Suc (Suc m)) n) \<longlonglongrightarrow> 0"
+    using Suc.IH(2) tendsto_mult_right_zero LIMSEQ_imp_Suc sledgehammer
+  show ?case
+    by (simp add: eq lim1 lim2 tendsto_add)
+qed
 
 lemma pdiff_tends_to_0:
   assumes "m > 0" 
